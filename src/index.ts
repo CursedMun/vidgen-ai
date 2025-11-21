@@ -101,7 +101,7 @@ export async function getAudioTranscription(videoUrl: string): Promise<string> {
     }
 }
 
-async function abrirShortsETranscrever() {
+async function openVideoandTranscribe() {
     const channelId = await findChannel(CHANNEL_NAME);
     if (!channelId) return console.log("Channel not found.");
 
@@ -123,4 +123,4 @@ async function abrirShortsETranscrever() {
 }
 
 
-abrirShortsETranscrever().catch(console.error);
+openVideoandTranscribe().catch(console.error);
