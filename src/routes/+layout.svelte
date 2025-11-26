@@ -6,14 +6,9 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+  <link rel="icon" href={favicon}>
 </svelte:head>
 
 <div class="min-h-screen flex items-center justify-center p-6">
-		<div class="w-full max-w-2xl">
-
-		 	{@render children()}
-		</div>
+  <div class="w-full max-w-2xl">{@render children()}</div>
 </div>
-
-

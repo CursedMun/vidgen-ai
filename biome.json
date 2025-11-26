@@ -17,8 +17,13 @@
 	},
 	"formatter": {
 		"enabled": true,
+		"formatWithErrors": false,
 		"indentStyle": "space",
-		"lineWidth": 120
+		"indentWidth": 2,
+		"lineEnding": "lf",
+		"lineWidth": 80,
+		"attributePosition": "auto",
+		"bracketSpacing": true
 	},
 	"linter": {
 		"enabled": true,
@@ -50,6 +55,7 @@
 			"indentScriptAndStyle": true,
 			"enabled": true
 		},
+		"experimentalFullSupportEnabled": true,
 		"parser": {
 			"interpolation": true
 		}
