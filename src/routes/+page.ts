@@ -1,10 +1,9 @@
-import type { PageLoad } from './$types';
-import { createTrpcClient } from '$lib/trpc/client';
+import { createTrpcClient } from "$lib/trpc/client";
+import type { PageLoad } from "./$types";
 
 export const load: PageLoad = async ({ fetch }) => {
-	const trpc = createTrpcClient(fetch);
-	const tasks = await trpc.tasks.list.query();
+  const trpc = createTrpcClient(fetch);
+  const tasks = await trpc.tasks.list.query();
 
-	return { tasks };
+  return { tasks };
 };
-
