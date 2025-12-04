@@ -24,3 +24,6 @@ vite.config.ts.timestamp-*
 
 # Local SQLite database
 sqlite.db
+
+# Downloaded video files
+downloads/

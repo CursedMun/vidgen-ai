@@ -1,5 +1,5 @@
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
-import type { AppRouter } from '$lib/server/trpc/router';
+import type { AppRouter } from '@/server/infrastructure/trpc/router';
 
 type FetchFn = typeof fetch;
 

@@ -1,4 +1,4 @@
-import { trpcHandler } from '$lib/server/trpc/server';
+import { trpcHandler } from '@/server/infrastructure/trpc/server';
 import type { RequestHandler } from './$types';
 
 const handler: RequestHandler = (event) => trpcHandler(event);
