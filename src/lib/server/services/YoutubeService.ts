@@ -1,0 +1,127 @@
+import { eq } from 'drizzle-orm';
+import * as fs from 'fs';
+import * as path from 'path';
+import type Innertube from 'youtubei.js';
+import { Utils } from 'youtubei.js';
+import type { TDatabase } from '../infrastructure/db/client';
+import { channels, transcriptions } from '../infrastructure/db/schema';
+import type { YoutubeApi } from '../infrastructure/YoutubeAPI';
+export class YoutubeService {
+  constructor(
+    private db: TDatabase,
+    private yt: Innertube,
+    private youtubeApi: YoutubeApi,
+  ) {}
+
+  public async fetchChannelLatestVideo(channel: typeof channels.$inferSelect) {
+    try {
+      console.log(`Fetching latest video for channel: ${channel.channel_name}`);
+
+      const videoId = await this.youtubeApi.findLatestShortId(
+        channel.channel_id,
+      );
+      if (!videoId) {
+        console.log(`No videos found for channel: ${channel.channel_name}`);
+        return;
+      }
+
+      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+      // Check if this video is already in transcriptions
+      const existingTranscription =
+        await this.db.query.transcriptions.findFirst({
+          where: (t, { eq }) => eq(t.video_id, videoId),
+        });
+
+      if (existingTranscription) {
+        console.log(`Video ${videoId} already scheduled or processed`);
+        return;
+      }
+
+      // Create a new pending transcription
+      await this.db.insert(transcriptions).values({
+        channel_id: channel.id,
+        video_url: videoUrl,
+        video_id: videoId,
+        thumbnail_url: thumbnailUrl,
+        status: 'pending',
+        transcript: '', // Will be filled when processing completes
+      });
+
+      // Update last fetched time
+      await this.db
+        .update(channels)
+        .set({ last_fetched_at: new Date() })
+        .where(eq(channels.id, channel.id));
+    } catch (error) {
+      console.error(
+        `Error fetching video for channel ${channel.channel_name}:`,
+        error,
+      );
+    }
+  }
+  public async downloadAudio(videoUrl: string): Promise<string> {
+    const downloadsDir = path.join(process.cwd(), 'downloads');
+
+    // Ensure downloads directory exists
+    if (!fs.existsSync(downloadsDir)) {
+      fs.mkdirSync(downloadsDir, { recursive: true });
+    }
+    const extractedVideoId = this.extractVideoId(videoUrl);
+    if (!extractedVideoId) {
+      throw new Error('Invalid YouTube URL.');
+    }
+    console.log('Starting download for URL:', videoUrl);
+    const info = await this.yt.getShortsVideoInfo(extractedVideoId);
+    const videoId = info.basic_info.id;
+    if (!videoId) {
+      throw new Error('Could not extract video ID.');
+    }
+    console.log('videoId:', videoId);
+    console.log('Extracted video ID:', videoId);
+    const filePath = path.join(
+      downloadsDir,
+      `audio_${videoId || Date.now()}.mp4`,
+    );
+
+    const stream = await this.yt.download(videoId, {
+      type: 'audio',
+      codec: 'mp4a',
+    });
+    const file = fs.createWriteStream(filePath);
+    for await (const chunk of Utils.streamToIterable(stream)) {
+      file.write(chunk);
+    }
+
+    return filePath;
+  }
+  public async getChannelLatestShortId(channelName: string) {
+    const channelId = await this.youtubeApi.findChannelIdByName(channelName);
+    if (!channelId) {
+      throw new Error('Channel not found.');
+    }
+
+    const videoId = await this.youtubeApi.findLatestShortId(channelId);
+    if (!videoId) {
+      throw new Error('No shorts found for this channel.');
+    }
+    return videoId;
+  }
+
+  private extractVideoId(url: string): string | null {
+    const patterns = [
+      /[?&]v=([^&#]+)/,
+      /https?:\/\/youtu\.be\/([^?&#]+)/,
+      /\/embed\/([^?&#]+)/,
+      /\/shorts\/([^?&#]+)/,
+    ];
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match?.[1]) {
+        return match[1];
+      }
+    }
+    return null;
+  }
+}
