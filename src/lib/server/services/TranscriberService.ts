@@ -1,12 +1,14 @@
 import type { GoogleGenAI } from '@google/genai';
 import * as fs from 'fs';
 import { schema, type TDatabase } from '../infrastructure/db/client';
+import type { VideoService } from './VideoService';
 import type { YoutubeService } from './YoutubeService';
 export class TranscriberService {
   constructor(
     private db: TDatabase,
     private ai: GoogleGenAI,
     private youtubeService: YoutubeService,
+    private videoService: VideoService,
   ) {}
 
   public async transcribeVideo(videoUrl: string): Promise<string> {
@@ -17,10 +19,14 @@ export class TranscriberService {
       localFilePath = await this.youtubeService.downloadAudio(videoUrl);
       console.log('Audio downloaded. Starting transcription...');
       const transcription = await this.transcribeAudio(localFilePath);
-      console.log('Transcription completed.');
+      console.log('Transcription completed.', transcription);
+      const channelId = await this.youtubeService.getChannelId(videoUrl);
+      const channel = await this.db.query.channels.findFirst({
+        where: (c, { eq }) => eq(c.channel_id, channelId)
+      });
       await this.db.insert(schema.transcriptions).values({
         video_url: videoUrl,
-        channel_id: this.youtubeService.getChannelId(videoUrl),
+        channel_id: channel?.id,
         transcript: transcription,
         createdAt: new Date(),
       });
@@ -67,7 +73,7 @@ export class TranscriberService {
     // Define the transcription prompt.
     const prompt = `Transcribe the provided audio in its entirety. Output the transcription in the original spoken language. Do not add any comments, introductions, or extra formatting—only the transcribed text.`;
     const response = await this.ai.models.generateContent({
-      model: 'gemini-2.5-pro',
+      model: 'gemini-2.5-flash',
       contents: [audioPart, prompt],
       config: {
         temperature: 0.1,

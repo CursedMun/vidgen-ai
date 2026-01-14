@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import Innertube, { Platform, UniversalCache, type Types } from 'youtubei.js';
+import Innertube, { Platform, type Types, UniversalCache } from 'youtubei.js';
 import { db, type TDatabase } from './infrastructure/db/client';
 import { YoutubeApi } from './infrastructure/YoutubeAPI';
 import { configureServices } from './services';

@@ -109,6 +109,26 @@ export class YoutubeService {
     return videoId;
   }
 
+  public async getChannelIdByName(channelName: string) {
+    const channelId = await this.youtubeApi.findChannelIdByName(channelName);
+    if (!channelId) {
+      throw new Error('Channel not found.');
+    }
+    return channelId;
+  }
+
+  public async getChannelId(videoUrl: string) {
+    const extractedVideoId = this.extractVideoId(videoUrl);
+    if (!extractedVideoId) {
+      throw new Error('Invalid YouTube URL.');
+    }
+    const id = await this.youtubeApi.findChannelIdByUrl(extractedVideoId)
+    if (!id) {
+      throw new Error('Video not found.');
+    }
+    return id;
+  }
+
   private extractVideoId(url: string): string | null {
     const patterns = [
       /[?&]v=([^&#]+)/,

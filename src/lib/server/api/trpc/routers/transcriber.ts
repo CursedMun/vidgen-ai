@@ -1,6 +1,6 @@
 import { schema } from '@/server/infrastructure/db/client';
 import { publicProcedure, router } from '@/server/infrastructure/trpc/server';
-import { desc, eq, isNull } from 'drizzle-orm';
+import { desc, eq, isNotNull } from 'drizzle-orm';
 import { z } from 'zod';
 
 export const transcriberRouter = router({
@@ -8,7 +8,7 @@ export const transcriberRouter = router({
     return ctx.db
       .select()
       .from(schema.transcriptions)
-      .where(isNull(schema.transcriptions.channel_id))
+      .where(isNotNull(schema.transcriptions.channel_id))
       .orderBy(desc(schema.transcriptions.created_at));
   }),
   create: publicProcedure

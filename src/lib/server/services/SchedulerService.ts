@@ -64,7 +64,6 @@ export class SchedulerService {
       // Transcribe the video
       const transcript = await this.transcriberService.transcribeVideo(
         job.video_url,
-        downloadId,
       );
 
       // Update transcription as completed

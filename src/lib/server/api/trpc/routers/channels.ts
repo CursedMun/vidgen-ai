@@ -19,7 +19,7 @@ export const channelsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Find channel ID by name
-      const channelId = await ctx.services.youtube.getChannelLatestShortId(
+      const channelId = await ctx.services.youtube.getChannelIdByName(
         input.channelName,
       );
       if (!channelId) {

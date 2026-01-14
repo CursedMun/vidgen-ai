@@ -33,15 +33,9 @@
   let videoUrl = $state('');
 
   // Track expanded transcripts
-  let expandedTranscripts = $state(new Set<number>());
-
+  let expandedTranscripts = $state<Record<number, boolean>>({});
   const toggleTranscript = (id: number) => {
-    if (expandedTranscripts.has(id)) {
-      expandedTranscripts.delete(id);
-    } else {
-      expandedTranscripts.add(id);
-    }
-    expandedTranscripts = expandedTranscripts; // Trigger reactivity
+    expandedTranscripts[id] = !expandedTranscripts[id]; // Trigger reactivity
   };
 
   async function handleTranscribe(event: Event) {
@@ -155,7 +149,7 @@
         {#if transcriptions.length}
           <div class="h-full space-y-3 overflow-y-auto pr-2">
             {#each transcriptions as item}
-              {@const expanded = expandedTranscripts.has(item.id)}
+              {@const expanded = !!expandedTranscripts[item.id]}
               <div
                 class="flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors"
               >
