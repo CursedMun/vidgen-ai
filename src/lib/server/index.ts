@@ -1,6 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
+import { TwitterApi } from 'twitter-api-v2';
 import Innertube, { Platform, type Types, UniversalCache } from 'youtubei.js';
 import { db, type TDatabase } from './infrastructure/db/client';
+import { InstagramApi } from './infrastructure/InstagramApi';
+import { TiktokApi } from './infrastructure/TiktokApi';
+import { TopMediAiApi } from './infrastructure/TopMediAiApi';
 import { YoutubeApi } from './infrastructure/YoutubeAPI';
 import { configureServices } from './services';
 export type TApplication = {

@@ -1,25 +1,21 @@
 import type { GoogleGenAI } from '@google/genai';
 import * as fs from 'fs';
 import { schema, type TDatabase } from '../infrastructure/db/client';
-import type { VideoService } from './VideoService';
 import type { YoutubeService } from './YoutubeService';
+
 export class TranscriberService {
   constructor(
     private db: TDatabase,
     private ai: GoogleGenAI,
     private youtubeService: YoutubeService,
-    private videoService: VideoService,
   ) {}
 
   public async transcribeVideo(videoUrl: string): Promise<string> {
     let localFilePath: string | null = null;
 
     try {
-      console.log('Starting audio download...');
       localFilePath = await this.youtubeService.downloadAudio(videoUrl);
-      console.log('Audio downloaded. Starting transcription...');
       const transcription = await this.transcribeAudio(localFilePath);
-      console.log('Transcription completed.', transcription);
       const channelId = await this.youtubeService.getChannelId(videoUrl);
       const channel = await this.db.query.channels.findFirst({
         where: (c, { eq }) => eq(c.channel_id, channelId)
@@ -30,6 +26,7 @@ export class TranscriberService {
         transcript: transcription,
         createdAt: new Date(),
       });
+
       return transcription;
     } catch (error) {
       console.error(

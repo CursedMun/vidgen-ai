@@ -15,19 +15,65 @@
   let channels = $state(
     [] as Awaited<ReturnType<typeof trpc.channels.list.query>>,
   );
+
+  let generatedVideos = $state<{ id: string; url: string; name: string; relativePath: string }[]>([]);
+  let isGeneratingVideoId = $state<number | null>(null);
+  let isPublishing = $state<string | null>(null);
+
   const load = async () => {
     transcriptions = await trpc.transcriber.list.query();
     channels = await trpc.channels.list.query();
+    generatedVideos = await trpc.videos.list.query();
   };
+
+  async function publishVideo(video: any, platform: 'instagram' | 'x' | 'tiktok') {
+  const idKey = `${video.id}-${platform}`;
+  isPublishing = idKey;
+  
+  try {
+    // url cloudflare
+    const publicBaseUrl = "https://clothes-singer-distributed-walnut.trycloudflare.com"; 
+
+    const result = await trpc.videos.publish.mutate({
+      filename: video.name,
+      platform,
+      caption: "Teste direto do Dashboard! ⚽️",
+      publicBaseUrl
+    });
+
+    if (result.success) {
+      alert(`Posted successfully on ${platform}!`);
+    }
+  } catch (error: any) {
+    alert(`Error: ${error.message}`);
+  } finally {
+    isPublishing = null;
+  }
+}
+
   $effect(() => {
     load();
   });
+  
   let errorMessage = $state<string | null>(null);
   let latestTranscript = $state<{
     videoUrl: string;
     transcript: string;
   } | null>(null);
 
+  async function generateVideo(id: number, text?: string) {
+    isGeneratingVideoId = id;
+    try {
+      await trpc.videos.generate.mutate({ transcriptionId: id, transcription: text || "" });
+      generatedVideos = await trpc.videos.list.query();
+      alert("Video successfully generated.");
+    } catch (error) {
+      errorMessage = "Error generating video.";
+    } finally {
+      isGeneratingVideoId = null;
+    }
+  }
+  
   // Download progress tracking
   let isDownloading = $state(false);
   let videoUrl = $state('');
@@ -36,6 +82,11 @@
   let expandedTranscripts = $state<Record<number, boolean>>({});
   const toggleTranscript = (id: number) => {
     expandedTranscripts[id] = !expandedTranscripts[id]; // Trigger reactivity
+  };
+
+  let loadingVideoId = $state(false);
+  const loadVideo = (id: number) => {
+    loadingVideoId = !loadingVideoId;
   };
 
   async function handleTranscribe(event: Event) {
@@ -177,6 +228,17 @@
                     </p>
                   </div>
                 </div>
+                <div class="flex items-center justify-end gap-2 p-2 border-t mt-2">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    class="bg-blue-600 hover:bg-blue-700"
+                    disabled={isGeneratingVideoId === item.id}
+                    onclick={() => generateVideo(item.id, item.transcript)}
+                  >
+                    {isGeneratingVideoId === item.id ? '🎬 Gerando...' : '🎬 Gerar Vídeo'}
+                  </Button>
+                </div>
                 {#if item.transcript}
                   <div class="space-y-2">
                     <p
@@ -204,6 +266,73 @@
             <p class="text-sm text-muted-foreground">
               Transcribe a video to populate this feed.
             </p>
+          </div>
+        {/if}
+      </Card.Content>
+    </Card.Root>
+  </section>
+
+  <section class="mt-6">
+    <Card.Root>
+      <Card.Header>
+        <div class="flex items-center justify-between">
+          <div class="space-y-1.5">
+            <Card.Description>Videos</Card.Description>
+            <Card.Title>Ready to Publish</Card.Title>
+          </div>
+          <Badge variant="outline">{generatedVideos.length} Vídeos</Badge>
+        </div>
+      </Card.Header>
+      <Card.Content>
+        {#if generatedVideos.length}
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {#each generatedVideos as video}
+              <div class="flex flex-col gap-3 rounded-xl border bg-card p-3 shadow-sm">
+                <div class="aspect-[9/16] w-full overflow-hidden rounded-lg bg-black">
+                  <video src={video.url} controls class="h-full w-full object-cover">
+                    <track kind="captions" />
+                  </video>
+                </div>
+                
+                <p class="text-xs font-medium truncate px-1">{video.name}</p>
+                
+                <div class="grid grid-cols-1 gap-2 mt-auto">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    class="w-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-pink-200 hover:bg-pink-500 hover:text-white"
+                    disabled={isPublishing === `${video.id}-instagram`}
+                    onclick={() => publishVideo(video, 'instagram')}
+                  >
+                    {isPublishing === `${video.id}-instagram` ? 'Enviando...' : '📸 Instagram Reels'}
+                  </Button>
+
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    class="w-full hover:bg-black hover:text-white"
+                    disabled={isPublishing === `${video.id}-tiktok`}
+                    onclick={() => publishVideo(video, 'tiktok')}
+                  >
+                    {isPublishing === `${video.id}-tiktok` ? 'Enviando...' : '🎵 TikTok'}
+                  </Button>
+
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    class="w-full hover:bg-sky-500 hover:text-white"
+                    disabled={isPublishing === `${video.id}-x`}
+                    onclick={() => publishVideo(video, 'x')}
+                  >
+                    {isPublishing === `${video.id}-x` ? 'Enviando...' : '🐦 X (Twitter)'}
+                  </Button>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <div class="flex h-32 items-center justify-center rounded-lg border border-dashed">
+            <p class="text-sm text-muted-foreground italic">Nenhum vídeo gerado ainda.</p>
           </div>
         {/if}
       </Card.Content>
