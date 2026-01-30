@@ -54,14 +54,14 @@
   $effect(() => {
     load();
   });
-  
+
   let errorMessage = $state<string | null>(null);
   let latestTranscript = $state<{
     videoUrl: string;
     transcript: string;
   } | null>(null);
 
-  async function generateVideo(id: number, text?: string) {
+  async function generateVideo(id: number, text: string | null) {
     isGeneratingVideoId = id;
     try {
       await trpc.videos.generate.mutate({ transcriptionId: id, transcription: text || "" });
@@ -232,11 +232,11 @@
                   <Button
                     size="sm"
                     variant="default"
-                    class="bg-blue-600 hover:bg-blue-700"
+                    class="bg-black"
                     disabled={isGeneratingVideoId === item.id}
                     onclick={() => generateVideo(item.id, item.transcript)}
                   >
-                    {isGeneratingVideoId === item.id ? '🎬 Gerando...' : '🎬 Gerar Vídeo'}
+                    {isGeneratingVideoId === item.id ? 'Generating...' : 'Generate Video'}
                   </Button>
                 </div>
                 {#if item.transcript}
@@ -304,7 +304,7 @@
                     disabled={isPublishing === `${video.id}-instagram`}
                     onclick={() => publishVideo(video, 'instagram')}
                   >
-                    {isPublishing === `${video.id}-instagram` ? 'Enviando...' : '📸 Instagram Reels'}
+                    {isPublishing === `${video.id}-instagram` ? 'Sending...' : '📸 Instagram Reels'}
                   </Button>
 
                   <Button 
@@ -314,7 +314,7 @@
                     disabled={isPublishing === `${video.id}-tiktok`}
                     onclick={() => publishVideo(video, 'tiktok')}
                   >
-                    {isPublishing === `${video.id}-tiktok` ? 'Enviando...' : '🎵 TikTok'}
+                    {isPublishing === `${video.id}-tiktok` ? 'Sending...' : '🎵 TikTok'}
                   </Button>
 
                   <Button 
@@ -324,7 +324,7 @@
                     disabled={isPublishing === `${video.id}-x`}
                     onclick={() => publishVideo(video, 'x')}
                   >
-                    {isPublishing === `${video.id}-x` ? 'Enviando...' : '🐦 X (Twitter)'}
+                    {isPublishing === `${video.id}-x` ? 'Sending...' : '🐦 X (Twitter)'}
                   </Button>
                 </div>
               </div>
@@ -332,7 +332,7 @@
           </div>
         {:else}
           <div class="flex h-32 items-center justify-center rounded-lg border border-dashed">
-            <p class="text-sm text-muted-foreground italic">Nenhum vídeo gerado ainda.</p>
+            <p class="text-sm text-muted-foreground italic">No videos yet.</p>
           </div>
         {/if}
       </Card.Content>
