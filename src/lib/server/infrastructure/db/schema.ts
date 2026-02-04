@@ -35,5 +35,15 @@ export const transcriptions = sqliteTable('transcriptions', {
   completed_at: integer('completed_at', { mode: 'timestamp' }),
 });
 
+export const settings = sqliteTable('settings', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  // Config key (ex: 'instagram_access_token')
+  key: text('key').notNull().unique(),
+  value: text('value').notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$onUpdate(() => new Date())
+});
+
+export type Settings = typeof settings.$inferSelect;
 export type Transcription = typeof transcriptions.$inferSelect;
 export type NewTranscription = typeof transcriptions.$inferInsert;

@@ -11,22 +11,37 @@ export const videoRouter = router({
     const files = fs.readdirSync(videoDir);
 
     return files
-      .filter(file => file.endsWith('.mp4'))
-      .map(file => ({
+      .filter((file) => file.endsWith('.mp4'))
+      .map((file) => ({
         id: file,
         name: file,
         url: `/final_videos/${file}`,
         relativePath: `/final_videos/${file}`,
-        createdAt: fs.statSync(path.join(videoDir, file)).birthtime
+        createdAt: fs.statSync(path.join(videoDir, file)).birthtime,
       }))
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }),
+  listImages: publicProcedure.query(async () => {
+    const imageDir = path.resolve('static/images');
+    if (!fs.existsSync(imageDir)) return [];
 
+    const files = fs.readdirSync(imageDir);
+    return files
+      .filter(file => /\.(png|jpg|jpeg|webp)$/i.test(file))
+      .map(file => ({
+        id: file,
+        url: `/images/${file}`,
+        name: file,
+        relativePath: `/images/${file}`,
+        createdAt: fs.statSync(path.join(imageDir, file)).birthtime
+      }))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }),
   generate: publicProcedure
     .input(
       z.object({
         transcriptionId: z.number(),
-        transcription: z.string()
+        transcription: z.string(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -42,28 +57,32 @@ export const videoRouter = router({
       }
       return { success: false };
     }),
-    publish: publicProcedure
+  publish: publicProcedure
     .input(
       z.object({
         filename: z.string(),
         platform: z.enum(['instagram', 'x', 'tiktok']),
         caption: z.string().optional(),
-        publicBaseUrl: z.string().url(), // URL do Cloudflare/LocalTunnel
+        publicBaseUrl: z.string().url(), // URL do Cloudflare
+        type: z.enum(['image', 'video']),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { filename, platform, caption, publicBaseUrl } = input;
-      const relativePath = `/final_videos/${filename}`;
-      const publicVideoUrl = `${publicBaseUrl}${relativePath}`;
+      const { filename, platform, caption, publicBaseUrl, type } = input;
+      const relativePath = type === "video" ? `/final_videos/${filename}` : `/images/${filename}`;
+      const projectRoot = process.cwd();
+      const publicMidiaUrl = platform === 'instagram' ? `${publicBaseUrl}${relativePath}` : path.resolve(projectRoot, relativePath);
+      console.log('process.cwd(): ', process.cwd());
 
-      console.log(`🚀 Publicando no ${platform}: ${publicVideoUrl}`);
+      console.log(`🚀 Publicando no ${platform}: ${publicMidiaUrl}`);
 
-      if (platform === 'instagram') {
+      if (platform === 'instagram' || platform === 'x') {
         try {
           const result = await ctx.services.video.publishVideo(
-            publicVideoUrl,
-            caption || "Conteúdo gerado por IA #Sportiz",
-            platform
+            publicMidiaUrl,
+            caption || 'Conteúdo gerado por IA',
+            platform,
+            type
           );
           return { success: true, id: result };
         } catch (error: any) {
@@ -73,8 +92,10 @@ export const videoRouter = router({
       }
 
       // Placeholder para outras redes
-      if (platform === 'x' || platform === 'tiktok') {
-        throw new Error(`Publicação para ${platform} ainda em desenvolvimento.`);
+      if (platform === 'tiktok') {
+        throw new Error(
+          `Publicação para ${platform} ainda em desenvolvimento.`,
+        );
       }
 
       return { success: false };

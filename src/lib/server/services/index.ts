@@ -26,7 +26,7 @@ export function configureServices(
 ) {
   const youtubeService = new YoutubeService(db, yt, youtubeApi);
   const twitterService = new TwitterService(twitterApi)
-  const instagramService = new InstagramService(instagramApi);
+  const instagramService = new InstagramService(db, instagramApi);
   const videoService = new VideoService(db, ai, musicApi, twitterService, instagramService);
   const transcriberService = new TranscriberService(db, ai, youtubeService);
   const tiktokService = new TikTokService(tiktokApi);

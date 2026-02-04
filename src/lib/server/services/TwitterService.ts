@@ -4,16 +4,12 @@ import type { TwitterApi } from 'twitter-api-v2';
 export class TwitterService {
   constructor(private twitterApi: TwitterApi) {}
 
-  /**
-   * Posta um vídeo (Reels/Shorts do Sportiz)
-   */
   public async postVideo(videoPath: string, caption: string) {
     try {
       const absolutePath = path.resolve(videoPath);
-      console.log('🚀 Fazendo upload do vídeo para o X...');
 
-      // O twitter-api-v2 cuida do chunking (INIT, APPEND, FINALIZE) automaticamente
       const mediaId = await this.twitterApi.v1.uploadMedia(absolutePath, {
+        mimeType: 'video/mp4',
         target: 'tweet',
       });
 
@@ -22,17 +18,14 @@ export class TwitterService {
         media: { media_ids: [mediaId] }
       });
 
-      console.log('✅ Vídeo postado no X! Tweet ID:', tweet.data.id);
+      console.log('Vídeo posted on X! Tweet ID:', tweet.data.id);
       return tweet.data.id;
     } catch (error) {
-      console.error('❌ Erro no Twitter Video:', error);
+      console.error('Error Twitter Video:', error);
       throw error;
     }
   }
 
-  /**
-   * Posta uma foto (Thumbnail ou Infográfico)
-   */
   public async postPhoto(imagePath: string, caption: string) {
       try {
         console.log('imagePath: ', imagePath);

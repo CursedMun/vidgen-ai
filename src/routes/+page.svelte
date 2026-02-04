@@ -16,14 +16,18 @@
     [] as Awaited<ReturnType<typeof trpc.channels.list.query>>,
   );
 
+  let generatedImages = $state<{ id: string; url: string; name: string; relativePath: string }[]>([]);
   let generatedVideos = $state<{ id: string; url: string; name: string; relativePath: string }[]>([]);
   let isGeneratingVideoId = $state<number | null>(null);
   let isPublishing = $state<string | null>(null);
+  // url cloudflare
+  let publicBaseUrl = "https://tim-poet-marked-premises.trycloudflare.com"; 
 
   const load = async () => {
     transcriptions = await trpc.transcriber.list.query();
     channels = await trpc.channels.list.query();
     generatedVideos = await trpc.videos.list.query();
+    generatedImages = await trpc.videos.listImages.query();
   };
 
   async function publishVideo(video: any, platform: 'instagram' | 'x' | 'tiktok') {
@@ -31,14 +35,35 @@
   isPublishing = idKey;
   
   try {
-    // url cloudflare
-    const publicBaseUrl = "https://clothes-singer-distributed-walnut.trycloudflare.com"; 
-
     const result = await trpc.videos.publish.mutate({
       filename: video.name,
       platform,
       caption: "Teste direto do Dashboard! ⚽️",
-      publicBaseUrl
+      publicBaseUrl,
+      type: "video"
+    });
+
+    if (result.success) {
+      alert(`Posted successfully on ${platform}!`);
+    }
+  } catch (error: any) {
+    alert(`Error: ${error.message}`);
+  } finally {
+    isPublishing = null;
+  }
+}
+
+async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') {
+  const idKey = `${image.id}-${platform}`;
+  isPublishing = idKey;
+  
+  try {
+    const result = await trpc.videos.publish.mutate({
+      filename: image.name,
+      platform,
+      caption: "Teste direto do Dashboard! ⚽️",
+      publicBaseUrl,
+      type: "image"
     });
 
     if (result.success) {
@@ -61,7 +86,7 @@
     transcript: string;
   } | null>(null);
 
-  async function generateVideo(id: number, text: string | null) {
+  async function generateMidia(id: number, text: string | null) {
     isGeneratingVideoId = id;
     try {
       await trpc.videos.generate.mutate({ transcriptionId: id, transcription: text || "" });
@@ -234,7 +259,7 @@
                     variant="default"
                     class="bg-black"
                     disabled={isGeneratingVideoId === item.id}
-                    onclick={() => generateVideo(item.id, item.transcript)}
+                    onclick={() => generateMidia(item.id, item.transcript)}
                   >
                     {isGeneratingVideoId === item.id ? 'Generating...' : 'Generate Video'}
                   </Button>
@@ -271,7 +296,57 @@
       </Card.Content>
     </Card.Root>
   </section>
-
+  <section class="mt-10">
+    <Card.Root>
+      <Card.Header>
+        <div class="flex items-center justify-between">
+          <div class="space-y-1.5">
+            <Card.Description>Visual Assets</Card.Description>
+            <Card.Title>Generated Images</Card.Title>
+          </div>
+          <Badge variant="secondary">{generatedImages.length} Imagens</Badge>
+        </div>
+      </Card.Header>
+      <Card.Content>
+        {#if generatedImages.length}
+          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {#each generatedImages as img}
+              <div class="group relative aspect-square overflow-hidden rounded-xl border bg-muted shadow-sm transition-all hover:ring-2 hover:ring-blue-500">
+                <img 
+                  src={img.url} 
+                  alt={img.name} 
+                  class="h-full w-full object-cover transition-transform group-hover:scale-105" 
+                />
+                
+                <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                  <Button 
+                    size="sm" 
+                    variant="secondary" 
+                    class="h-8 text-xs w-24"
+                    onclick={() => publishImage(img, 'instagram')} 
+                  >
+                    Postar IG
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    class="h-8 text-xs w-24 bg-white/10 text-white"
+                    onclick={() => publishImage(img, 'x')}
+                  >
+                    Postar X
+                  </Button>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <div class="flex h-32 items-center justify-center rounded-lg border border-dashed">
+            <p class="text-sm text-muted-foreground">Nenhuma imagem gerada ainda.</p>
+          </div>
+        {/if}
+      </Card.Content>
+    </Card.Root>
+  </section>
   <section class="mt-6">
     <Card.Root>
       <Card.Header>

@@ -303,42 +303,41 @@ export class VideoService {
     return relativePath.split(path.sep).join('/');
   }
 
-  public async publishVideo(videoUrl: string, caption: string, platform: 'instagram' | 'x' | 'tiktok') {
+  public async publishVideo(videoUrl: string, caption: string, platform: 'instagram' | 'x' | 'tiktok', type: "image" | "video") {
     console.log('videoUrl: ', videoUrl);
     try {
 
       if (platform === "instagram") {
-        const response = await this.instagramPublish(videoUrl, caption)
+        const response = await this.instagramPublish(videoUrl, caption, type)
         return response;
       }
       if (platform === "x") {
-        const response = await this.twitterPublish(videoUrl, caption)
+        const response = await this.twitterPublish(videoUrl, caption, type)
         return response;
       }
     } catch (error) {
       console.error(
-        'ERROR IN THE TRANSCRIPTION PROCESS (Gemini):',
+        'Publish Video error:',
         (error as Error).message,
       );
-      throw new Error('Audio transcription error.');
+      throw new Error('Publish Video error.');
     }
   }
 
-  private async instagramPublish(videoUrl: string, caption: string) {
-      // const teste2 = await this.instagramService.postImageToInstagram(
-      //   publicVideoUrl,
-      //   "Teste de Imagem Automática 🚀"
-      // )
-      const result = await this.instagramService.uploadToInstagram(videoUrl, caption)
+  private async instagramPublish(url: string, caption: string, type: "image" | "video") {
+    if (type === "image") {
+      const result = await this.instagramService.postImageToInstagram(
+        url,
+        caption
+      )
       return result
+    }
+    const result = await this.instagramService.uploadToInstagram(url, caption)
+    return result
   }
 
-  private async twitterPublish(photoUrl: string, caption: string) {
-     // const photo = await this.videoService.generatePhoto(transcription);
-      // const photoPath = this.videoService.toRelativePublicPath(photo)
-      // const publicVideoUrl = `${PUBLIC_APP_URL}${photoPath}`;
-      //  const publicVideoUrl =  "https://sonic-hood-arbor-registration.trycloudflare.com/images/image_1769687426578.png"
-    const result = await this.twitterService.postPhoto(photoUrl, caption)
+  private async twitterPublish(url: string, caption: string, type: "image" | "video") {
+    const result = await this.twitterService.postPhoto(url, caption)
     return result
   }
 }

@@ -3,11 +3,39 @@ import QueryStringAddon from 'wretch/addons/queryString';
 
 export class InstagramApi {
   private api = wretch('https://graph.facebook.com/v21.0').addon(QueryStringAddon);
-
+  private accessToken: string = '';
   constructor(
     private businessAccountId: string,
-    private accessToken: string
+    private initialToken: string
   ) {}
+
+public setAccessToken(token: string) {
+  this.accessToken = token;
+}
+
+public async exchangeForLongLivedToken() {
+    return this.api
+      .url('/oauth/access_token')
+      .query({
+        grant_type: 'fb_exchange_token',
+        client_id: "1195601955614147",
+        client_secret: "503ead4dae36f16cec85e8c4e0d110ab",
+        fb_exchange_token: this.initialToken
+      })
+      .get()
+      .json<any>();
+  }
+
+  public async refreshLongLivedToken() {
+    return this.api
+      .url('/refresh_access_token')
+      .query({
+        grant_type: 'ig_refresh_token',
+        access_token: this.accessToken
+      })
+      .get()
+      .json<{ access_token: string; expires_in: number; token_type: string }>();
+  }
 
   public async uploadReel(videoUrl: string, caption: string) {
     try {
