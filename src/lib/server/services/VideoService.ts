@@ -303,12 +303,12 @@ export class VideoService {
     return relativePath.split(path.sep).join('/');
   }
 
-  public async publishVideo(videoUrl: string, caption: string, platform: 'instagram' | 'x' | 'tiktok', type: "image" | "video") {
+  public async publishVideo(videoUrl: string, caption: string, platform: 'instagram' | 'x' | 'tiktok', type: "image" | "video", accoundId?: number | null) {
     console.log('videoUrl: ', videoUrl);
     try {
 
       if (platform === "instagram") {
-        const response = await this.instagramPublish(videoUrl, caption, type)
+        const response = await this.instagramPublish(videoUrl, caption, type, accoundId as number)
         return response;
       }
       if (platform === "x") {
@@ -324,7 +324,8 @@ export class VideoService {
     }
   }
 
-  private async instagramPublish(url: string, caption: string, type: "image" | "video") {
+  private async instagramPublish(url: string, caption: string, type: "image" | "video", accoundId: number) {
+    await this.instagramService.setCurrentUser(accoundId)
     if (type === "image") {
       const result = await this.instagramService.postImageToInstagram(
         url,

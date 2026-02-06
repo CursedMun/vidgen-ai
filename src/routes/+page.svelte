@@ -20,17 +20,31 @@
   let generatedVideos = $state<{ id: string; url: string; name: string; relativePath: string }[]>([]);
   let isGeneratingVideoId = $state<number | null>(null);
   let isPublishing = $state<string | null>(null);
+  let selectedAccountId = $state<number | null>(null);
+  let accounts = $state<{ id: number; name: string; expiresAt: string; updatedAt: string | null; instagramBusinessId: string; accessToken: string; }[]>([]);
+  let newToken = $state("");
+  let accountAlias = $state("");
   // url cloudflare
-  let publicBaseUrl = "https://tim-poet-marked-premises.trycloudflare.com"; 
+  let publicBaseUrl = "https://bold-thu-reserve-stars.trycloudflare.com"; 
+
+  async function addAccount() {
+    await trpc.videos.addInstagramAccount.mutate({ 
+      shortLivedToken: newToken, 
+      name: accountAlias 
+    });
+    newToken = ""; accountAlias = "";
+    accounts = await trpc.videos.listInstagramAccounts.query();
+  }
 
   const load = async () => {
     transcriptions = await trpc.transcriber.list.query();
     channels = await trpc.channels.list.query();
     generatedVideos = await trpc.videos.list.query();
     generatedImages = await trpc.videos.listImages.query();
+    accounts = await trpc.videos.listInstagramAccounts.query();
   };
 
-  async function publishVideo(video: any, platform: 'instagram' | 'x' | 'tiktok') {
+  async function publishVideo(video: any, platform: 'instagram' | 'x' | 'tiktok', accountId?: number) {
   const idKey = `${video.id}-${platform}`;
   isPublishing = idKey;
   
@@ -40,7 +54,8 @@
       platform,
       caption: "Teste direto do Dashboard! ⚽️",
       publicBaseUrl,
-      type: "video"
+      type: "video",
+      accountId
     });
 
     if (result.success) {
@@ -53,7 +68,7 @@
   }
 }
 
-async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') {
+async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok', accountId?: number) {
   const idKey = `${image.id}-${platform}`;
   isPublishing = idKey;
   
@@ -63,7 +78,8 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') 
       platform,
       caption: "Teste direto do Dashboard! ⚽️",
       publicBaseUrl,
-      type: "image"
+      type: "image",
+      accountId
     });
 
     if (result.success) {
@@ -296,6 +312,129 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') 
       </Card.Content>
     </Card.Root>
   </section>
+  <!-- <section class="flex-1 flex mb-6 p-6 bg-white">
+    <div class="w-96 flex-none space-y-6">
+      <Card.Root>
+        <div class="p-6 bg-white shadow-sm">
+          <h3 class="text-lg font-bold mb-4">Adicionar Novo Perfil do Instagram</h3>
+          <div class="grid gap-4">
+            <input bind:value={accountAlias} placeholder="Nome do Perfil" class="border p-2 rounded" />
+            <input bind:value={newToken} placeholder="Short-Lived Token aqui" class="border p-2 rounded" />
+            <Button onclick={addAccount}>Vincular Conta à Base de Dados</Button>
+          </div>
+        </div>
+      </Card.Root>
+    </div>
+    <div class="w-96 flex-none space-y-6">
+      <Card.Root class="p-6">
+    <div class=" bg-white items-center gap-3 mb-6">
+      <div>
+        <h2 class="text-lg font-bold text-gray-800">Destino da Publicação</h2>
+        <p class="text-sm text-gray-500">Selecione o perfil que receberá a mídia gerada</p>
+      </div>
+    </div>
+  
+    <div class="flex-wrap gap-4">
+      <div class="flex-1 min-w-[250px]">
+        <label class="block text-xs font-semibold text-gray-400 uppercase mb-2 ml-1">
+          Perfil do Instagram
+        </label>
+        <select 
+          bind:value={selectedAccountId}
+          class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none"
+        >
+          <option value={null}>— Selecionar Perfil —</option>
+          {#each accounts as acc}
+            <option value={acc.id}>{acc.name} (ID: {acc.instagramBusinessId})</option>
+          {/each}
+        </select>
+      </div>
+  
+      {#if selectedAccountId}
+        {@const selected = accounts.find(a => a.id === selectedAccountId)}
+        <div class="px-4 py-3 bg-green-50 text-green-700 rounded-xl border border-green-100 flex items-center gap-2">
+          <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span class="text-sm font-medium">Perfil "{selected?.name}" Ativo</span>
+        </div>
+      {/if}
+    </div>
+  </Card.Root>
+  </div>
+  </section> -->
+
+
+  <section class="w-full flex gap-6 mb-6 border border-none">
+    
+    <div class="flex-1 min-w-[380px]">
+      <Card.Root class="h-full shadow-sm">
+        <div class="p-6">
+          <div class="mb-4">
+            <h3 class="text-lg font-bold text-gray-800">Novo Perfil</h3>
+            <p class="text-xs text-muted-foreground">Vincule uma nova conta do Instagram</p>
+          </div>
+          
+          <div class="grid gap-4">
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-bold uppercase text-gray-400 ml-1">Identificação</label>
+              <input bind:value={accountAlias} placeholder="Nome do Perfil" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+            </div>
+            
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-bold uppercase text-gray-400 ml-1">Meta Token</label>
+              <input bind:value={newToken} placeholder="Short-Lived Token" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+            </div>
+
+            <Button class="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-5" onclick={addAccount}>
+              Vincular Conta
+            </Button>
+          </div>
+        </div>
+      </Card.Root>
+    </div>
+
+    <div class="flex-1 min-w-[380px]">
+      <Card.Root class="h-full shadow-sm">
+        <div class="p-6">
+          <div class="mb-6">
+            <h2 class="text-lg font-bold text-gray-800">Destino da Publicação</h2>
+            <p class="text-sm text-gray-500">Onde a mídia será publicada automaticamente</p>
+          </div>
+  
+          <div class="space-y-6">
+            <div class="space-y-2">
+              <label class="block text-xs font-semibold text-gray-400 uppercase ml-1">
+                Perfil Ativo
+              </label>
+              <select 
+                bind:value={selectedAccountId}
+                class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none text-sm font-medium cursor-pointer"
+              >
+                <option value={null}>— Selecionar Perfil —</option>
+                {#each accounts as acc}
+                  <option value={acc.id}>{acc.name} (ID: {acc.instagramBusinessId})</option>
+                {/each}
+              </select>
+            </div>
+  
+            {#if selectedAccountId}
+              {@const selected = accounts.find(a => a.id === selectedAccountId)}
+              <div class="px-4 py-4 bg-green-50 text-green-700 rounded-2xl border border-green-100 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
+                    <div>
+                        <p class="text-xs uppercase font-bold opacity-70">Perfil Selecionado</p>
+                        <p class="text-sm font-bold leading-none">{selected?.name}</p>
+                    </div>
+                </div>
+                <Badge variant="outline" class="bg-white border-green-200 text-green-700">Online</Badge>
+              </div>
+            {/if}
+          </div>
+        </div>
+      </Card.Root>
+    </div>
+</section>
+  
   <section class="mt-10">
     <Card.Root>
       <Card.Header>
@@ -323,7 +462,8 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') 
                     size="sm" 
                     variant="secondary" 
                     class="h-8 text-xs w-24"
-                    onclick={() => publishImage(img, 'instagram')} 
+                    disabled={!selectedAccountId}
+                    onclick={() => publishImage(img, 'instagram', selectedAccountId)} 
                   >
                     Postar IG
                   </Button>
@@ -376,8 +516,8 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') 
                     size="sm" 
                     variant="outline"
                     class="w-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-pink-200 hover:bg-pink-500 hover:text-white"
-                    disabled={isPublishing === `${video.id}-instagram`}
-                    onclick={() => publishVideo(video, 'instagram')}
+                    disabled={!selectedAccountId || isPublishing === `${video.id}-instagram`}
+                    onclick={() => publishVideo(video, 'instagram', selectedAccountId)}
                   >
                     {isPublishing === `${video.id}-instagram` ? 'Sending...' : '📸 Instagram Reels'}
                   </Button>

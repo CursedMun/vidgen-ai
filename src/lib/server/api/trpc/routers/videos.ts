@@ -1,3 +1,4 @@
+import { schema } from '@/server/infrastructure/db/client';
 import { publicProcedure, router } from '@/server/infrastructure/trpc/server';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -65,24 +66,25 @@ export const videoRouter = router({
         caption: z.string().optional(),
         publicBaseUrl: z.string().url(), // URL do Cloudflare
         type: z.enum(['image', 'video']),
+        accountId: z.number().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.platform === 'instagram') {
+        if (!input.accountId) throw new Error("Account ID is required for Instagram.");
+      }
       const { filename, platform, caption, publicBaseUrl, type } = input;
       const relativePath = type === "video" ? `/final_videos/${filename}` : `/images/${filename}`;
       const projectRoot = process.cwd();
       const publicMidiaUrl = platform === 'instagram' ? `${publicBaseUrl}${relativePath}` : path.resolve(projectRoot, relativePath);
-      console.log('process.cwd(): ', process.cwd());
-
-      console.log(`🚀 Publicando no ${platform}: ${publicMidiaUrl}`);
-
       if (platform === 'instagram' || platform === 'x') {
         try {
           const result = await ctx.services.video.publishVideo(
             publicMidiaUrl,
             caption || 'Conteúdo gerado por IA',
             platform,
-            type
+            type,
+            input.accountId
           );
           return { success: true, id: result };
         } catch (error: any) {
@@ -100,4 +102,26 @@ export const videoRouter = router({
 
       return { success: false };
     }),
+  addInstagramAccount: publicProcedure
+    .input(z.object({
+      shortLivedToken: z.string(),
+      name: z.string()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const newAccount = await ctx.services.instagram.discoverAndSaveAccount(
+        input.shortLivedToken,
+        input.name
+      );
+
+      return {
+        success: true,
+        account: newAccount
+      };
+    }),
+
+  listInstagramAccounts: publicProcedure.query(async ({ ctx }) => {
+    return await ctx.db
+      .select()
+      .from(schema.instagramAccounts);
+  }),
 });
