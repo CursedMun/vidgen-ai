@@ -312,59 +312,9 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok', 
       </Card.Content>
     </Card.Root>
   </section>
-  <!-- <section class="flex-1 flex mb-6 p-6 bg-white">
-    <div class="w-96 flex-none space-y-6">
-      <Card.Root>
-        <div class="p-6 bg-white shadow-sm">
-          <h3 class="text-lg font-bold mb-4">Adicionar Novo Perfil do Instagram</h3>
-          <div class="grid gap-4">
-            <input bind:value={accountAlias} placeholder="Nome do Perfil" class="border p-2 rounded" />
-            <input bind:value={newToken} placeholder="Short-Lived Token aqui" class="border p-2 rounded" />
-            <Button onclick={addAccount}>Vincular Conta à Base de Dados</Button>
-          </div>
-        </div>
-      </Card.Root>
-    </div>
-    <div class="w-96 flex-none space-y-6">
-      <Card.Root class="p-6">
-    <div class=" bg-white items-center gap-3 mb-6">
-      <div>
-        <h2 class="text-lg font-bold text-gray-800">Destino da Publicação</h2>
-        <p class="text-sm text-gray-500">Selecione o perfil que receberá a mídia gerada</p>
-      </div>
-    </div>
-  
-    <div class="flex-wrap gap-4">
-      <div class="flex-1 min-w-[250px]">
-        <label class="block text-xs font-semibold text-gray-400 uppercase mb-2 ml-1">
-          Perfil do Instagram
-        </label>
-        <select 
-          bind:value={selectedAccountId}
-          class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none"
-        >
-          <option value={null}>— Selecionar Perfil —</option>
-          {#each accounts as acc}
-            <option value={acc.id}>{acc.name} (ID: {acc.instagramBusinessId})</option>
-          {/each}
-        </select>
-      </div>
-  
-      {#if selectedAccountId}
-        {@const selected = accounts.find(a => a.id === selectedAccountId)}
-        <div class="px-4 py-3 bg-green-50 text-green-700 rounded-xl border border-green-100 flex items-center gap-2">
-          <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span class="text-sm font-medium">Perfil "{selected?.name}" Ativo</span>
-        </div>
-      {/if}
-    </div>
-  </Card.Root>
-  </div>
-  </section> -->
 
 
-  <section class="w-full flex gap-6 mb-6 border border-none">
-    
+  <section class="w-full flex gap-6 mb-6 border border-none">  
     <div class="flex-1 min-w-[380px]">
       <Card.Root class="h-full shadow-sm">
         <div class="p-6">
@@ -407,7 +357,7 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok', 
               </label>
               <select 
                 bind:value={selectedAccountId}
-                class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none text-sm font-medium cursor-pointer"
+                class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none text-sm font-medium cursor-pointer"
               >
                 <option value={null}>— Selecionar Perfil —</option>
                 {#each accounts as acc}

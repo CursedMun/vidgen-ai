@@ -5,8 +5,6 @@ export class YoutubeApi {
   private googleAPI = wretch('https://www.googleapis.com/youtube/v3').addon(
     QueryStringAddon,
   );
-  private YOUTUBE_API_KEY = 'AIzaSyBvjeyozJDDU9rGqMeEKAEuDOK4QBaxqog';
-
   constructor(private apiKey: string) {}
 
   public async search(params: Record<string, any>): Promise<any> {
@@ -92,7 +90,7 @@ export class YoutubeApi {
         .query({
           part: 'snippet',
           id: videoId,
-          key: this.YOUTUBE_API_KEY,
+          key: this.apiKey,
         })
         .get()
         .json<any>();
