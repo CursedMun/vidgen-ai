@@ -64,7 +64,6 @@ export const videoRouter = router({
         filename: z.string(),
         platform: z.enum(['instagram', 'x', 'tiktok']),
         caption: z.string().optional(),
-        publicBaseUrl: z.string().url(), // URL do Cloudflare
         type: z.enum(['image', 'video']),
         accountId: z.number().optional(),
       }),
@@ -73,10 +72,11 @@ export const videoRouter = router({
       if (input.platform === 'instagram') {
         if (!input.accountId) throw new Error("Account ID is required for Instagram.");
       }
-      const { filename, platform, caption, publicBaseUrl, type } = input;
+      const { filename, platform, caption, type } = input;
       const relativePath = type === "video" ? `/final_videos/${filename}` : `/images/${filename}`;
       const projectRoot = process.cwd();
-      const publicMidiaUrl = platform === 'instagram' ? `${publicBaseUrl}${relativePath}` : path.resolve(projectRoot, relativePath);
+      const publicUrl = await ctx.services.instagram.uploadToSupabase(`./static${relativePath}`, filename);
+      const publicMidiaUrl = platform === 'instagram' ? publicUrl : path.resolve(projectRoot, relativePath);
       if (platform === 'instagram' || platform === 'x') {
         try {
           const result = await ctx.services.video.publishVideo(
@@ -93,7 +93,6 @@ export const videoRouter = router({
         }
       }
 
-      // Placeholder para outras redes
       if (platform === 'tiktok') {
         throw new Error(
           `Publicação para ${platform} ainda em desenvolvimento.`,

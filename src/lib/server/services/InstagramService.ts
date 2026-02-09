@@ -1,11 +1,44 @@
+import { SUPABASE_KEY } from '$env/static/private';
+import { createClient } from '@supabase/supabase-js';
 import { eq } from 'drizzle-orm';
+import { readFileSync } from 'fs';
+import path from 'path';
 import { schema, type TDatabase } from '../infrastructure/db/client';
 import type { InstagramApi } from '../infrastructure/InstagramApi';
+
+const supabaseUrl = 'https://knepxsusnvopbojcrjpn.supabase.co';
+console.log('SUPABASE_KEY: ', SUPABASE_KEY);
+const supabase = createClient(supabaseUrl, SUPABASE_KEY);
 export class InstagramService {
   constructor(
     private db: TDatabase,
     private instagramApi: InstagramApi,
   ) {}
+
+  public async uploadToSupabase(filePath: string, fileName: string) {
+    const fileBuffer = readFileSync(filePath);
+    const extension = path.extname(filePath).toLowerCase(); // .jpg, .png, .mp4, etc.
+
+    let contentType = 'application/octet-stream';
+    if (extension === '.mp4') contentType = 'video/mp4';
+    if (extension === '.png') contentType = 'image/png';
+    if (extension === '.jpg' || extension === '.jpeg') contentType = 'image/jpeg';
+
+    const { data, error } = await supabase.storage
+      .from('videos')
+      .upload(`${fileName}`, fileBuffer, {
+        contentType: contentType,
+        upsert: true
+      });
+
+    if (error) throw error;
+
+    const { data: publicUrlData } = supabase.storage
+      .from('videos')
+      .getPublicUrl(`${fileName}`);
+
+    return publicUrlData.publicUrl;
+  }
 
   public async uploadToInstagram(videoPath: string, title: string) {
     try {

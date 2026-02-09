@@ -24,8 +24,6 @@
   let accounts = $state<{ id: number; name: string; expiresAt: string; updatedAt: string | null; instagramBusinessId: string; accessToken: string; }[]>([]);
   let newToken = $state("");
   let accountAlias = $state("");
-  // url cloudflare
-  let publicBaseUrl = "https://bold-thu-reserve-stars.trycloudflare.com"; 
 
   async function addAccount() {
     await trpc.videos.addInstagramAccount.mutate({ 
@@ -53,7 +51,6 @@
       filename: video.name,
       platform,
       caption: "Teste direto do Dashboard! ⚽️",
-      publicBaseUrl,
       type: "video",
       accountId
     });
@@ -77,7 +74,6 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok', 
       filename: image.name,
       platform,
       caption: "Teste direto do Dashboard! ⚽️",
-      publicBaseUrl,
       type: "image",
       accountId
     });
