@@ -1,8 +1,9 @@
 import { eq } from 'drizzle-orm';
-import * as fs from 'fs';
-import * as path from 'path';
-import type Innertube from 'youtubei.js';
-import { Utils } from 'youtubei.js';
+import type { Auth } from 'googleapis';
+import { google } from 'googleapis';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { type Innertube, Utils } from 'youtubei.js';
 import type { TDatabase } from '../infrastructure/db/client';
 import { channels, transcriptions } from '../infrastructure/db/schema';
 import type { YoutubeApi } from '../infrastructure/YoutubeAPI';
@@ -10,6 +11,7 @@ export class YoutubeService {
   constructor(
     private db: TDatabase,
     private yt: Innertube,
+    private ytOauth2Client: Auth.OAuth2Client,
     private youtubeApi: YoutubeApi,
   ) {}
 
@@ -144,4 +146,58 @@ export class YoutubeService {
     }
     return null;
   }
+
+  public async uploadShort(
+    absoluteFilePath: string,
+    title: string,
+    description: string
+  ) {
+    const youtube = google.youtube({
+      version: 'v3',
+      auth: this.ytOauth2Client,
+    });
+
+    const root = process.cwd();
+    const videoPath = path.join(root, 'static', absoluteFilePath);
+    try {
+
+      if (!fs.existsSync(videoPath)) {
+        throw new Error(`Ficheiro não encontrado: ${videoPath}`);
+      }
+
+      const res = await youtube.videos.insert({
+        part: ['snippet', 'status'],
+        requestBody: {
+          snippet: {
+            title: `${title.slice(0, 90)} #shorts`,
+            description: description,
+            categoryId: '17', // Sports
+            defaultLanguage: 'pt-PT',
+          },
+          status: {
+            privacyStatus: 'public',
+            selfDeclaredMadeForKids: false,
+          },
+        },
+        media: {
+          body: fs.createReadStream(videoPath),
+        },
+      });
+
+      console.log('upload complete');
+
+      return {
+        success: true,
+        videoId: res.data.id,
+        url: `https://www.youtube.com/shorts/${res.data.id}`,
+      };
+    } catch (error: any) {
+      const errorDetail = error.response?.data?.error || error.message;
+      console.error('YouTube API error:', JSON.stringify(errorDetail, null, 2));
+
+      throw new Error(`YouTube upload failed: ${error.message}`);
+    }
+  }
+
+
 }

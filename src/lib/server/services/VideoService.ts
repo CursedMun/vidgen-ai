@@ -6,6 +6,7 @@ import type { TDatabase } from '../infrastructure/db/client';
 import type { TopMediAiApi } from '../infrastructure/TopMediAiApi';
 import type { InstagramService } from './InstagramService';
 import type { TwitterService } from './TwitterService';
+import type { YoutubeService } from './YoutubeService';
 
 export class VideoService {
   constructor(
@@ -13,7 +14,8 @@ export class VideoService {
     private ai: GoogleGenAI,
     private musicApi: TopMediAiApi,
     private twitterService: TwitterService,
-    private instagramService: InstagramService
+    private instagramService: InstagramService,
+    private youtubeService: YoutubeService
   ) {}
 
 
@@ -303,7 +305,7 @@ export class VideoService {
     return relativePath.split(path.sep).join('/');
   }
 
-  public async publishVideo(videoUrl: string, caption: string, platform: 'instagram' | 'x' | 'tiktok', type: "image" | "video", accoundId?: number | null) {
+  public async publishVideo(videoUrl: string, caption: string, platform: 'instagram' | 'x' | 'tiktok'| 'youtube' , type: "image" | "video", accoundId?: number | null) {
     console.log('videoUrl: ', videoUrl);
     try {
 
@@ -313,6 +315,10 @@ export class VideoService {
       }
       if (platform === "x") {
         const response = await this.twitterPublish(videoUrl, caption, type)
+        return response;
+      }
+      if (platform === "youtube") {
+        const response = await this.youtubePublish(videoUrl, caption)
         return response;
       }
     } catch (error) {
@@ -339,6 +345,15 @@ export class VideoService {
 
   private async twitterPublish(url: string, caption: string, type: "image" | "video") {
     const result = await this.twitterService.postPhoto(url, caption)
+    return result
+  }
+
+  private async youtubePublish(url: string, caption: string) {
+    const result = await this.youtubeService.uploadShort(
+      url,
+      caption,
+      ""
+    )
     return result
   }
 }

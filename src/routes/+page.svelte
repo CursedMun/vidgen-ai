@@ -16,11 +16,12 @@
     [] as Awaited<ReturnType<typeof trpc.channels.list.query>>,
   );
 
+  let selectedPlatform = $state<'instagram' | 'youtube' | 'x' | 'tiktok' | null>(null);
+  let selectedAccountId = $state<number | null>(null);
   let generatedImages = $state<{ id: string; url: string; name: string; relativePath: string }[]>([]);
   let generatedVideos = $state<{ id: string; url: string; name: string; relativePath: string }[]>([]);
   let isGeneratingVideoId = $state<number | null>(null);
   let isPublishing = $state<string | null>(null);
-  let selectedAccountId = $state<number | null>(null);
   let accounts = $state<{ id: number; name: string; expiresAt: string; updatedAt: string | null; instagramBusinessId: string; accessToken: string; }[]>([]);
   let newToken = $state("");
   let accountAlias = $state("");
@@ -42,17 +43,23 @@
     accounts = await trpc.videos.listInstagramAccounts.query();
   };
 
-  async function publishVideo(video: any, platform: 'instagram' | 'x' | 'tiktok', accountId?: number) {
+  async function publishVideo(video: any, platform: 'instagram' | 'x' | 'tiktok' | 'youtube' | null) {
+    console.log('selectedAccountId: ', selectedAccountId);
+    console.log('platform: ', platform);
+  if (!platform)  {
+    return alert(`Error: Select platform`);
+  }
   const idKey = `${video.id}-${platform}`;
   isPublishing = idKey;
-  
+  if (!selectedPlatform) return alert("Seleciona uma plataforma!");
+  if (selectedPlatform === 'instagram' && !selectedAccountId) return alert("Seleciona a conta do Instagram!");
   try {
     const result = await trpc.videos.publish.mutate({
       filename: video.name,
       platform,
-      caption: "Teste direto do Dashboard! ⚽️",
+      caption: "Teste direto do Dashboard!",
       type: "video",
-      accountId
+      accountId: selectedAccountId === null ? undefined : selectedAccountId
     });
 
     if (result.success) {
@@ -65,7 +72,7 @@
   }
 }
 
-async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok', accountId?: number) {
+async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') {
   const idKey = `${image.id}-${platform}`;
   isPublishing = idKey;
   
@@ -75,7 +82,7 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok', 
       platform,
       caption: "Teste direto do Dashboard! ⚽️",
       type: "image",
-      accountId
+      accountId: selectedAccountId === null ? undefined : selectedAccountId
     });
 
     if (result.success) {
@@ -125,6 +132,15 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok', 
   const loadVideo = (id: number) => {
     loadingVideoId = !loadingVideoId;
   };
+
+  async function connectTwitter() {
+    selectedPlatform = 'x'; 
+    selectedAccountId = null;
+    const { redirectUrl } = await trpc.videos.authorizeX.query();
+    if (redirectUrl) {
+      window.open(redirectUrl.url, '_blank', 'noopener,noreferrer');
+    }
+  }
 
   async function handleTranscribe(event: Event) {
     event.preventDefault();
@@ -341,38 +357,68 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok', 
     <div class="flex-1 min-w-[380px]">
       <Card.Root class="h-full shadow-sm">
         <div class="p-6">
-          <div class="mb-6">
+  
+          <div class="flex-1 space-y-4">
             <h2 class="text-lg font-bold text-gray-800">Destino da Publicação</h2>
-            <p class="text-sm text-gray-500">Onde a mídia será publicada automaticamente</p>
-          </div>
-  
-          <div class="space-y-6">
-            <div class="space-y-2">
-              <label class="block text-xs font-semibold text-gray-400 uppercase ml-1">
-                Perfil Ativo
-              </label>
-              <select 
-                bind:value={selectedAccountId}
-                class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none text-sm font-medium cursor-pointer"
+            
+            <div class="flex gap-4">
+              <button 
+                onclick={() => selectedPlatform = 'instagram'}
+                class="flex-1 p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 {selectedPlatform === 'instagram' ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-gray-200 bg-white'}"
               >
-                <option value={null}>— Selecionar Perfil —</option>
-                {#each accounts as acc}
-                  <option value={acc.id}>{acc.name} (ID: {acc.instagramBusinessId})</option>
-                {/each}
-              </select>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mb-1"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                <span class="text-xs font-bold uppercase">Instagram</span>
+              </button>
+        
+              <button 
+                onclick={() => { selectedPlatform = 'youtube'; selectedAccountId = null; }}
+                class="flex-1 p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 {selectedPlatform === 'youtube' ? 'border-red-600 bg-red-50 text-red-700' : 'border-gray-200 bg-white'}"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mb-1"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/><path d="m10 15 5-3-5-3z"/></svg>
+                <span class="text-xs font-bold uppercase">YouTube Shorts</span>
+              </button>
+
+              <button 
+              onclick={connectTwitter}
+              class="flex-1 p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 {selectedPlatform === 'x' ? 'border-red-600 bg-red-50 text-red-700' : 'border-gray-200 bg-white'}"
+            >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              stroke-width="2" 
+              stroke-linecap="round" 
+              stroke-linejoin="round" 
+              class="mb-1"
+            >
+              <path d="M4 4l11.733 16h4.267l-11.733 -16z" />
+              <path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772" />
+            </svg>
+              <span class="text-xs font-bold uppercase">Twitter / X</span>
+            </button>
+
+
             </div>
-  
-            {#if selectedAccountId}
-              {@const selected = accounts.find(a => a.id === selectedAccountId)}
-              <div class="px-4 py-4 bg-green-50 text-green-700 rounded-2xl border border-green-100 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
-                    <div>
-                        <p class="text-xs uppercase font-bold opacity-70">Perfil Selecionado</p>
-                        <p class="text-sm font-bold leading-none">{selected?.name}</p>
-                    </div>
+        
+            {#if selectedPlatform === 'instagram'}
+              <div class="pt-4 border-t animate-in fade-in slide-in-from-top-2">
+                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-2">Selecionar Conta Instagram</label>
+                <select bind:value={selectedAccountId} class="w-full p-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-pink-500">
+                  <option value={null}>— Escolher Perfil —</option>
+                  {#each accounts as acc}
+                    <option value={acc.id}>{acc.name}</option>
+                  {/each}
+                </select>
+              </div>
+            {:else if selectedPlatform === 'youtube'}
+              <div class="pt-4 border-t animate-in fade-in slide-in-from-top-2">
+                <div class="flex items-center gap-3 p-3 bg-green-100/50 rounded-lg border border-green-200">
+                  <div class="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
+                  <p class="text-xs font-medium text-green-800">YouTube Studio</p>
                 </div>
-                <Badge variant="outline" class="bg-white border-green-200 text-green-700">Online</Badge>
               </div>
             {/if}
           </div>
@@ -409,7 +455,7 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok', 
                     variant="secondary" 
                     class="h-8 text-xs w-24"
                     disabled={!selectedAccountId}
-                    onclick={() => publishImage(img, 'instagram', selectedAccountId)} 
+                    onclick={() => publishImage(img, 'instagram')} 
                   >
                     Postar IG
                   </Button>
@@ -457,37 +503,19 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok', 
                 
                 <p class="text-xs font-medium truncate px-1">{video.name}</p>
                 
-                <div class="grid grid-cols-1 gap-2 mt-auto">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    class="w-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-pink-200 hover:bg-pink-500 hover:text-white"
-                    disabled={!selectedAccountId || isPublishing === `${video.id}-instagram`}
-                    onclick={() => publishVideo(video, 'instagram', selectedAccountId)}
-                  >
-                    {isPublishing === `${video.id}-instagram` ? 'Sending...' : '📸 Instagram Reels'}
-                  </Button>
-
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    class="w-full hover:bg-black hover:text-white"
-                    disabled={isPublishing === `${video.id}-tiktok`}
-                    onclick={() => publishVideo(video, 'tiktok')}
-                  >
-                    {isPublishing === `${video.id}-tiktok` ? 'Sending...' : '🎵 TikTok'}
-                  </Button>
-
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    class="w-full hover:bg-sky-500 hover:text-white"
-                    disabled={isPublishing === `${video.id}-x`}
-                    onclick={() => publishVideo(video, 'x')}
-                  >
-                    {isPublishing === `${video.id}-x` ? 'Sending...' : '🐦 X (Twitter)'}
-                  </Button>
-                </div>
+                <Button
+                  size="sm"
+                  variant="default"
+                  class={selectedPlatform === 'youtube' ? 'bg-red-600 hover:bg-red-700' : 'bg-black'}
+                  disabled={!selectedPlatform || (selectedPlatform === 'instagram' && !selectedAccountId)}
+                  onclick={() => publishVideo(video, selectedPlatform)}
+                >
+                  {#if !selectedPlatform}
+                    Select Platform First
+                  {:else}
+                    Post to {selectedPlatform === 'youtube' ? 'Shorts' : 'Instagram'}
+                  {/if}
+                </Button>
               </div>
             {/each}
           </div>

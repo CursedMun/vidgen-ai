@@ -62,22 +62,23 @@ export const videoRouter = router({
     .input(
       z.object({
         filename: z.string(),
-        platform: z.enum(['instagram', 'x', 'tiktok']),
+        platform: z.enum(['instagram', 'x', 'tiktok', 'youtube']),
         caption: z.string().optional(),
         type: z.enum(['image', 'video']),
         accountId: z.number().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      console.log('input: ', input);
       if (input.platform === 'instagram') {
         if (!input.accountId) throw new Error("Account ID is required for Instagram.");
       }
       const { filename, platform, caption, type } = input;
       const relativePath = type === "video" ? `/final_videos/${filename}` : `/images/${filename}`;
-      const projectRoot = process.cwd();
       const publicUrl = await ctx.services.instagram.uploadToSupabase(`./static${relativePath}`, filename);
-      const publicMidiaUrl = platform === 'instagram' ? publicUrl : path.resolve(projectRoot, relativePath);
-      if (platform === 'instagram' || platform === 'x') {
+      const publicMidiaUrl = platform === 'instagram' ? publicUrl : relativePath;
+      console.log('publicMidiaUrl: ', publicMidiaUrl);
+      if (platform === 'instagram' || platform === 'youtube' || platform === 'x') {
         try {
           const result = await ctx.services.video.publishVideo(
             publicMidiaUrl,
@@ -122,5 +123,9 @@ export const videoRouter = router({
     return await ctx.db
       .select()
       .from(schema.instagramAccounts);
+  }),
+  authorizeX: publicProcedure.query(async ({ ctx }) => {
+    const authUrl = await ctx.services.twitter.authLink(ctx.cookies);
+    return { success: true, redirectUrl: authUrl };
   }),
 });

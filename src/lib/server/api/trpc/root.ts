@@ -8,7 +8,7 @@ export const appRouter = router({
   channels: channelsRouter,
   transcriber: transcriberRouter,
   jobs: jobsRouter,
-  videos: videoRouter
+  videos: videoRouter,
 });
 
 export type AppRouter = typeof appRouter;

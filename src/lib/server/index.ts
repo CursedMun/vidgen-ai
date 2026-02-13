@@ -4,13 +4,17 @@ import {
   TIKTOK_ClIENT_SECRET,
   TIKTOK_REDIRECT,
   TOPMEDIAI_API_KEY,
-  X_ACCESS_SECRET,
-  X_ACCESS_TOKEN,
   X_APP_KEY,
   X_APP_SECRET,
-  YOUTUBE_API_KEY
+  YOUTUBE_API_KEY,
+  YT_CLIENT_ID,
+  YT_CLIENT_SECRET,
+  YT_REDIRECT_URI,
+  YT_REFRESH_TOKEN
 } from '$env/static/private';
 import { GoogleGenAI } from '@google/genai';
+import type { Cookies, RequestEvent } from '@sveltejs/kit';
+import { google } from 'googleapis';
 import { TwitterApi } from 'twitter-api-v2';
 import Innertube, { Platform, type Types, UniversalCache } from 'youtubei.js';
 import { db, type TDatabase } from './infrastructure/db/client';
@@ -22,15 +26,29 @@ import { configureServices } from './services';
 export type TApplication = {
   services: Awaited<ReturnType<typeof configureServices>>;
   db: TDatabase;
+  cookies: Cookies
 };
 
 let rawApp: TApplication | undefined;
 
-export async function configureApp() {
+export async function configureApp(event: RequestEvent) {
   if (rawApp) {
     return rawApp;
   }
   const yt = await Innertube.create({ cache: new UniversalCache(true) });
+
+
+const ytOauth2Client = new google.auth.OAuth2(
+  YT_CLIENT_ID,
+  YT_CLIENT_SECRET,
+  YT_REDIRECT_URI
+);
+
+// Para postar, vais precisar de um Refresh Token
+ytOauth2Client.setCredentials({
+  refresh_token: YT_REFRESH_TOKEN
+});
+
   Platform.shim.eval = async (
     data: Types.BuildScriptResult,
     env: Record<string, Types.VMPrimative>,
@@ -63,12 +81,14 @@ export async function configureApp() {
 
   const instagramApi = new InstagramApi();
 
+
   const twitterApi = new TwitterApi({
     appKey: X_APP_KEY,
-    appSecret: X_APP_SECRET,
-    accessToken: X_ACCESS_TOKEN,
-    accessSecret: X_ACCESS_SECRET,
+    appSecret: X_APP_SECRET
   });
+
+
+
 
   const ai = new GoogleGenAI({
     apiKey: GEMINI_API_KEY
@@ -79,6 +99,7 @@ export async function configureApp() {
       db,
       ai,
       yt,
+      ytOauth2Client,
       youtubeApi,
       topMediaApi,
       tiktokApi,
@@ -86,6 +107,7 @@ export async function configureApp() {
       twitterApi,
     ),
     db: db,
+    cookies: event.cookies
   };
   return rawApp;
 }
