@@ -2,7 +2,8 @@ import type { GoogleGenAI } from '@google/genai';
 import ffmpeg from 'fluent-ffmpeg';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { TDatabase } from '../infrastructure/db/client';
+import { OpenAI } from 'openai';
+
 import type { TopMediAiApi } from '../infrastructure/TopMediAiApi';
 import type { InstagramService } from './InstagramService';
 import type { TwitterService } from './TwitterService';
@@ -10,8 +11,8 @@ import type { YoutubeService } from './YoutubeService';
 
 export class VideoService {
   constructor(
-    private db: TDatabase,
     private ai: GoogleGenAI,
+    private openai: OpenAI,
     private musicApi: TopMediAiApi,
     private twitterService: TwitterService,
     private instagramService: InstagramService,
@@ -98,12 +99,16 @@ export class VideoService {
     """
     `;
 
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    // const response = await this.ai.models.generateContent({
+    //   model: 'gemini-2.0-flash',
+    //   contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    // });
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
     });
 
-    return response.text || '';
+    return response.choices[0].message.content || '';
   }
 
   private async generateSpeechScriptFromTranscript(
@@ -143,14 +148,12 @@ export class VideoService {
     """
     `;
 
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
     });
 
-    return (
-      response?.text?.replace(/["']/g, '').replace(/\n/g, ' ').trim() || ''
-    );
+    return response.choices[0].message.content?.replace(/["']/g, '').replace(/\n/g, ' ').trim() || '';
   }
 
   private async generateImage(prompt: string): Promise<string> {
@@ -261,19 +264,18 @@ export class VideoService {
   }
 
   private async generateInitialImage(prompt: string): Promise<string> {
-    const imageResponse = await this.ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    const response = await this.openai.images.generate({
+      model: "dall-e-3",
+      prompt: prompt,
+      n: 1,
+      size: "1024x1792", // Proporção vertical 9:16 aproximada
+      response_format: "b64_json",
     });
-    const candidate = imageResponse.candidates?.[0];
-    const imagePart = candidate?.content?.parts?.find((p) => p.inlineData);
 
-    if (!imagePart || !imagePart.inlineData) {
-      throw new Error('Failed to generate reference image.');
-    }
-    const imageBytes = imagePart.inlineData.data;
-    if (!imageBytes) throw new Error('Failed to generate initial image.');
-    return imageBytes;
+    const base64Data = response.data?.[0].b64_json;
+    if (!base64Data) throw new Error('Failed to generate image with DALL-E');
+
+    return base64Data;
   }
 
   private async waitForOperation(operation: any | undefined): Promise<any> {

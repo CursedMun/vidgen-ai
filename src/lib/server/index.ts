@@ -1,5 +1,6 @@
 import {
   GEMINI_API_KEY,
+  OPENAI_API_KEY,
   TIKTOK_API_KEY,
   TIKTOK_ClIENT_SECRET,
   TIKTOK_REDIRECT,
@@ -15,6 +16,7 @@ import {
 import { GoogleGenAI } from '@google/genai';
 import type { Cookies, RequestEvent } from '@sveltejs/kit';
 import { google } from 'googleapis';
+import { OpenAI } from 'openai';
 import { TwitterApi } from 'twitter-api-v2';
 import Innertube, { Platform, type Types, UniversalCache } from 'youtubei.js';
 import { db, type TDatabase } from './infrastructure/db/client';
@@ -87,17 +89,21 @@ ytOauth2Client.setCredentials({
     appSecret: X_APP_SECRET
   });
 
-
-
-
   const ai = new GoogleGenAI({
     apiKey: GEMINI_API_KEY
   });
+
+  const openai = new OpenAI({
+    apiKey: OPENAI_API_KEY
+  });
+
+
 
   rawApp = {
     services: configureServices(
       db,
       ai,
+      openai,
       yt,
       ytOauth2Client,
       youtubeApi,

@@ -1,12 +1,12 @@
-import type { GoogleGenAI } from '@google/genai';
 import * as fs from 'fs';
+import type { OpenAI } from 'openai';
 import { schema, type TDatabase } from '../infrastructure/db/client';
 import type { YoutubeService } from './YoutubeService';
 
 export class TranscriberService {
   constructor(
     private db: TDatabase,
-    private ai: GoogleGenAI,
+    private openai: OpenAI,
     private youtubeService: YoutubeService,
   ) {}
 
@@ -61,22 +61,11 @@ export class TranscriberService {
     // await fs.promises.unlink(localFilePath)
   }
   private async transcribeAudio(localFilePath: string): Promise<string> {
-    const audioPart = {
-      inlineData: {
-        data: fs.readFileSync(localFilePath).toString('base64'),
-        mimeType: 'audio/mp3',
-      },
-    };
-    // Define the transcription prompt.
-    const prompt = `Transcribe the provided audio in its entirety. Output the transcription in the original spoken language. Do not add any comments, introductions, or extra formatting—only the transcribed text.`;
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [audioPart, prompt],
-      config: {
-        temperature: 0.1,
-      },
+    const transcription = await this.openai.audio.transcriptions.create({
+      file: fs.createReadStream(localFilePath),
+      model: "whisper-1",
     });
 
-    return response.text || '';
+    return transcription.text;
   }
 }

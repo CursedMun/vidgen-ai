@@ -1,5 +1,6 @@
 import type { GoogleGenAI } from '@google/genai';
 import type { Auth } from 'googleapis';
+import type { OpenAI } from 'openai';
 import type { TwitterApi } from 'twitter-api-v2';
 import type Innertube from 'youtubei.js';
 import type { TDatabase } from '../infrastructure/db/client';
@@ -18,6 +19,7 @@ import { YoutubeService } from './YoutubeService';
 export function configureServices(
   db: TDatabase,
   ai: GoogleGenAI,
+  openai: OpenAI,
   yt: Innertube,
   ytOauth2Client: Auth.OAuth2Client,
   youtubeApi: YoutubeApi,
@@ -29,8 +31,8 @@ export function configureServices(
   const youtubeService = new YoutubeService(db, yt, ytOauth2Client, youtubeApi);
   const twitterService = new TwitterService(twitterApi)
   const instagramService = new InstagramService(db, instagramApi);
-  const videoService = new VideoService(db, ai, musicApi, twitterService, instagramService, youtubeService);
-  const transcriberService = new TranscriberService(db, ai, youtubeService);
+  const videoService = new VideoService(ai, openai, musicApi, twitterService, instagramService, youtubeService);
+  const transcriberService = new TranscriberService(db, openai, youtubeService);
   const tiktokService = new TikTokService(tiktokApi);
   return {
     scheduler: new SchedulerService(db, transcriberService, youtubeService),
