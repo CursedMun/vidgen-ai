@@ -1,11 +1,12 @@
-import type { GoogleGenAI } from '@google/genai';
 import * as fs from 'fs';
+import type { OpenAI } from 'openai';
 import { schema, type TDatabase } from '../infrastructure/db/client';
 import type { YoutubeService } from './YoutubeService';
+
 export class TranscriberService {
   constructor(
     private db: TDatabase,
-    private ai: GoogleGenAI,
+    private openai: OpenAI,
     private youtubeService: YoutubeService,
   ) {}
 
@@ -13,17 +14,19 @@ export class TranscriberService {
     let localFilePath: string | null = null;
 
     try {
-      console.log('Starting audio download...');
       localFilePath = await this.youtubeService.downloadAudio(videoUrl);
-      console.log('Audio downloaded. Starting transcription...');
       const transcription = await this.transcribeAudio(localFilePath);
-      console.log('Transcription completed.');
+      const channelId = await this.youtubeService.getChannelId(videoUrl);
+      const channel = await this.db.query.channels.findFirst({
+        where: (c, { eq }) => eq(c.channel_id, channelId)
+      });
       await this.db.insert(schema.transcriptions).values({
         video_url: videoUrl,
-        channel_id: this.youtubeService.getChannelId(videoUrl),
+        channel_id: channel?.id,
         transcript: transcription,
         createdAt: new Date(),
       });
+
       return transcription;
     } catch (error) {
       console.error(
@@ -58,22 +61,11 @@ export class TranscriberService {
     // await fs.promises.unlink(localFilePath)
   }
   private async transcribeAudio(localFilePath: string): Promise<string> {
-    const audioPart = {
-      inlineData: {
-        data: fs.readFileSync(localFilePath).toString('base64'),
-        mimeType: 'audio/mp3',
-      },
-    };
-    // Define the transcription prompt.
-    const prompt = `Transcribe the provided audio in its entirety. Output the transcription in the original spoken language. Do not add any comments, introductions, or extra formatting—only the transcribed text.`;
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-2.5-pro',
-      contents: [audioPart, prompt],
-      config: {
-        temperature: 0.1,
-      },
+    const transcription = await this.openai.audio.transcriptions.create({
+      file: fs.createReadStream(localFilePath),
+      model: "whisper-1",
     });
 
-    return response.text || '';
+    return transcription.text;
   }
 }

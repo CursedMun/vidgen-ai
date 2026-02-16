@@ -2,6 +2,7 @@ import { schema } from '@/server/infrastructure/db/client';
 import { publicProcedure, router } from '@/server/infrastructure/trpc/server';
 import { desc, eq } from 'drizzle-orm';
 import z from 'zod';
+
 console.log({ publicProcedure });
 export const channelsRouter = router({
   list: publicProcedure.query(async ({ ctx }) => {
@@ -19,7 +20,7 @@ export const channelsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Find channel ID by name
-      const channelId = await ctx.services.youtube.getChannelLatestShortId(
+      const channelId = await ctx.services.youtube.getChannelIdByName(
         input.channelName,
       );
       if (!channelId) {

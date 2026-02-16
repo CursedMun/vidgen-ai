@@ -35,5 +35,27 @@ export const transcriptions = sqliteTable('transcriptions', {
   completed_at: integer('completed_at', { mode: 'timestamp' }),
 });
 
+export const instagramAccounts = sqliteTable('instagram_accounts', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  instagramBusinessId: text('instagram_business_id').notNull().unique(),
+  accessToken: text('access_token').notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$onUpdate(() => new Date())
+});
+
+export const presets = sqliteTable('presets', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(), // Ex: "Cinematic Sports", "TikTok Viral"
+  imagePrompt: text('image_prompt').notNull(),
+  videoPrompt: text('video_prompt').notNull(),
+  audioPrompt: text('audio_prompt').notNull(),
+  isActive: integer('is_active', { mode: 'boolean' }).default(false),
+  avatar: text('avatar'),
+  createdAt: text('created_at').default(new Date().toISOString())
+});
+
+export type InstagramAccounts = typeof instagramAccounts.$inferSelect;
+export type Presets = typeof presets.$inferSelect;
 export type Transcription = typeof transcriptions.$inferSelect;
 export type NewTranscription = typeof transcriptions.$inferInsert;

@@ -8,8 +8,21 @@ export function trpcHandler(event: RequestEvent) {
     endpoint: '/api/trpc',
     req: event.request,
     router: appRouter,
-    createContext: configureApp,
+    createContext: () => configureApp(event),
     allowBatching: true,
+    responseMeta(opts) {
+      return {
+        headers: {
+          'Set-Cookie': event.cookies.serialize('tw_oauth_secret', opts.ctx?.cookies.get('tw_oauth_secret') ?? '', {
+             path: '/',
+             httpOnly: true,
+             sameSite: 'lax',
+             secure: false, // localhost
+             maxAge: 60 * 10
+          })
+        }
+      }
+    }
   });
 }
 export const handle: Handle = async ({ event, resolve }) => {
