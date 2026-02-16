@@ -17,8 +17,8 @@
 		},
 		navMain: [
 			{
-				title: "Dashboard",
-				url: "#",
+				title: "Presets",
+				url: "/presets",
 				icon: DashboardIcon,
 			},
 		],

@@ -14,17 +14,18 @@
 			<Sidebar.MenuItem class="flex items-center gap-2">
 				<Sidebar.MenuButton
 					class="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
-					tooltipContent="Quick create"
+					tooltipContent="Dashboard"
+					onclick={() => window.location.href = `/`}
 				>
 					<CirclePlusFilledIcon />
-					<span>Quick Create</span>
+					<span>Dashboard</span>
 				</Sidebar.MenuButton>
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
 		<Sidebar.Menu>
 			{#each items as item (item.title)}
 				<Sidebar.MenuItem>
-					<Sidebar.MenuButton tooltipContent={item.title}>
+					<Sidebar.MenuButton onclick={() => window.location.href = `${item.url}`} tooltipContent={item.title}>
 						{#if item.icon}
 							<item.icon />
 						{/if}
