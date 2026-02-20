@@ -20,6 +20,7 @@ export class AutomationService {
           sourceUrl: input.sourceUrl,
           mediaType: input.mediaType,
           interval: input.interval,
+          aiModel: input.aiModel,
           status: 'generating'
         }).returning().all();
 

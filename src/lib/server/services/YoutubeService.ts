@@ -30,9 +30,7 @@ export class YoutubeService {
 
   public async saveYotubeAccount(code: string) {
     try {
-      console.log('ENTROU AQUIIIIII code: ', code);
       const { tokens } = await this.ytOauth2Client.getToken(code);
-      console.log('tokens: ', tokens);
 
       this.ytOauth2Client.setCredentials(tokens);
       const youtube = google.youtube({
@@ -43,11 +41,9 @@ export class YoutubeService {
         part: ['snippet'],
         mine: true,
       });
-      console.log('channelRes: ', channelRes.data.items);
       const channelName =
       channelRes.data.items?.[0]?.snippet?.title ?? 'Canal YouTube';
 
-      console.log('channelName: ', channelName);
       return await this.db
         .insert(schema.youtubeAccounts)
         .values({
@@ -130,7 +126,6 @@ export class YoutubeService {
       throw new Error('Could not extract video ID.');
     }
     console.log('videoId:', videoId);
-    console.log('Extracted video ID:', videoId);
     const filePath = path.join(
       downloadsDir,
       `audio_${videoId || Date.now()}.mp4`,
@@ -226,9 +221,11 @@ export class YoutubeService {
       version: 'v3',
       auth: this.ytOauth2Client,
     });
-
-    const root = process.cwd();
-    const videoPath = path.join(root, 'static', absoluteFilePath);
+    let videoPath = absoluteFilePath
+    if (!path.isAbsolute(absoluteFilePath)) {
+      const root = process.cwd();
+      videoPath = path.join(root, 'static', absoluteFilePath);
+    }
     try {
       if (!fs.existsSync(videoPath)) {
         throw new Error(`Ficheiro não encontrado: ${videoPath}`);

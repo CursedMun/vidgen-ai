@@ -74,6 +74,7 @@ export const publicationCrons = sqliteTable('publication_crons', {
   sourceUrl: text('source_url'),
   videoPath: text('video_path'),
   mediaType: text('media_type').default('video'),
+  aiModel: text('ai_model', { enum: ['veo', 'chatgpt'] }).default('chatgpt'),
   scheduledAt: text('scheduled_at').notNull(), // ISO String
   status: text('status').default('generating'), // generating -> pending -> completed
   createdAt: text('created_at').default(new Date().toISOString()),

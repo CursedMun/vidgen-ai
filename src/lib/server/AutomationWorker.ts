@@ -38,7 +38,7 @@ export class AutomationWorker {
         if (!preset) throw new Error("Preset não encontrado");
         let finalFilePath = "";
         if (cron.mediaType === 'Video') {
-          finalFilePath = await this.videoService.generateVideo(preset.videoPrompt, preset.audioPrompt, transcription);
+          finalFilePath = await this.videoService.generateVideo(preset.videoPrompt, preset.audioPrompt, transcription, cron.aiModel);
         } else {
           finalFilePath = await this.videoService.generatePhoto(preset.imagePrompt, transcription);
         }

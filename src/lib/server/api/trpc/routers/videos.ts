@@ -46,7 +46,7 @@ export const videoRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.services.video.generateVideo("", "", input.transcription);
+      return ctx.services.video.generateVideo("", "", input.transcription, "chatgpt");
     }),
   remove: publicProcedure
     .input(z.object({ filename: z.string() }))
@@ -74,20 +74,16 @@ export const videoRouter = router({
         if (!input.accountId) throw new Error("Account ID is required for Instagram.");
       }
       const { filename, platform, caption, type } = input;
-      const relativePath = type === "video" ? `/final_videos/${filename}` : `/images/${filename}`;
-      const publicUrl = await ctx.services.instagram.uploadToSupabase(`./static${relativePath}`, filename);
-      const publicMidiaUrl = platform === 'instagram' ? publicUrl : relativePath;
-      console.log('publicMidiaUrl: ', publicMidiaUrl);
       if (platform === 'instagram' || platform === 'youtube' || platform === 'x') {
         try {
-          const result = await ctx.services.video.publishVideo(
-            publicMidiaUrl,
-            caption || 'Conteúdo gerado por IA',
-            platform,
-            type,
-            input.accountId
-          );
-          return { success: true, id: result };
+          // const result = await ctx.services.video.publishVideo(
+          //   publicMidiaUrl,
+          //   caption || 'Conteúdo gerado por IA',
+          //   platform,
+          //   type,
+          //   input.accountId
+          // );
+          return { success: true, id: "" };
         } catch (error: any) {
           console.error('Error in Instagram post:', error.message);
           throw new Error(`Error Instagram: ${error.message}`);

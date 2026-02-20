@@ -5,25 +5,18 @@ import path from 'node:path';
 import { OpenAI } from 'openai';
 
 import type { TopMediAiApi } from '../infrastructure/TopMediAiApi';
-import type { InstagramService } from './InstagramService';
-import type { TwitterService } from './TwitterService';
-import type { YoutubeService } from './YoutubeService';
 
 export class VideoService {
   constructor(
     private ai: GoogleGenAI,
     private openai: OpenAI,
     private musicApi: TopMediAiApi,
-    private twitterService: TwitterService,
-    private instagramService: InstagramService,
-    private youtubeService: YoutubeService
   ) {}
 
 
   public async generatePhoto(imagePrompt: string, transcription: string): Promise<string> {
     try {
       const prompt = await this.generateVideoPrompt(imagePrompt, transcription);
-      // const prompt = "Main Message: A high-performance professional footballer is recognized as an essential, top-tier talent and the best lateral player in the Portuguese league. Emotion: Dominance. Pacing: Medium."
       console.log('generatePhoto prompt: ', prompt);
       const imagePaths = await this.generateImage(prompt);
       return imagePaths;
@@ -33,7 +26,7 @@ export class VideoService {
     }
   }
 
-  public async generateVideo(videoPrompt: string, audioPrompt: string ,transcription: string): Promise<string> {
+  public async generateVideo(videoPrompt: string, audioPrompt: string ,transcription: string, model: 'veo' | 'chatgpt' | null): Promise<string> {
     try {
       const targetSegments = 1;
 
@@ -43,25 +36,27 @@ export class VideoService {
         transcription,
         targetSegments,
       );
-      console.log('musicPrompt: ', musicPrompt);
 
       let audioPath = '';
       const audioUrl = await this.musicApi.generateMusic(musicPrompt);
-      console.log('audioUrl: ', audioUrl);
       if (audioUrl) {
         const fileName = `sportiz-${Date.now()}`;
         audioPath = await this.musicApi.saveAudioLocally(audioUrl, fileName);
         audioPath = path.resolve('static', audioPath.replace(/^\//, ''));
       }
+      let videoPath = []
+      if (!model ||  model === "chatgpt") {
+        const video = await this.generateSoraVideo(prompt)
+        videoPath = [video]
+      } else {
+        videoPath = await this.generateLongVideo(prompt, targetSegments)
 
-      const videoPath = await this.generateSoraVideo(prompt)
-      console.log('videoPath: ========Z', videoPath);
-
+      }
+      if (!audioUrl) return videoPath[0]
       const finalVideoPath = await this.mergeAudioAndVideo(
-        [videoPath],
+        videoPath,
         audioPath,
       );
-      console.log('finalVideoPath: ', finalVideoPath);
 
       return finalVideoPath;
     } catch (error) {
@@ -366,30 +361,30 @@ export class VideoService {
     return relativePath.split(path.sep).join('/');
   }
 
-  public async publishVideo(videoUrl: string, caption: string, platform: 'instagram' | 'x' | 'tiktok'| 'youtube' , type: "image" | "video", accoundId?: number | null) {
-    console.log('videoUrl: ', videoUrl);
-    try {
+  // public async publishVideo(videoUrl: string, caption: string, platform: 'instagram' | 'x' | 'tiktok'| 'youtube' , type: "image" | "video", accoundId?: number | null) {
+  //   console.log('videoUrl: ', videoUrl);
+  //   try {
 
-      // if (platform === "instagram") {
-      //   const response = await this.instagramPublish(videoUrl, caption, type, accoundId as number)
-      //   return response;
-      // }
-      if (platform === "x") {
-        const response = await this.twitterPublish(videoUrl, caption, type)
-        return response;
-      }
-      if (platform === "youtube") {
-        const response = await this.youtubePublish(videoUrl, caption)
-        return response;
-      }
-    } catch (error) {
-      console.error(
-        'Publish Video error:',
-        (error as Error).message,
-      );
-      throw new Error('Publish Video error.');
-    }
-  }
+  //     // if (platform === "instagram") {
+  //     //   const response = await this.instagramPublish(videoUrl, caption, type, accoundId as number)
+  //     //   return response;
+  //     // }
+  //     // if (platform === "x") {
+  //     //   const response = await this.twitterPublish(videoUrl, caption, type)
+  //     //   return response;
+  //     // }
+  //     // if (platform === "youtube") {
+  //     //   const response = await this.youtubePublish(videoUrl, caption)
+  //     //   return response;
+  //     // }
+  //   } catch (error) {
+  //     console.error(
+  //       'Publish Video error:',
+  //       (error as Error).message,
+  //     );
+  //     throw new Error('Publish Video error.');
+  //   }
+  // }
 
   // private async instagramPublish(url: string, caption: string, type: "image" | "video", accoundId: number) {
   //   await this.instagramService.setCurrentUser(accoundId)
@@ -404,17 +399,17 @@ export class VideoService {
   //   return result
   // }
 
-  private async twitterPublish(url: string, caption: string, type: "image" | "video") {
-    const result = await this.twitterService.postPhoto(url, caption)
-    return result
-  }
+  // private async twitterPublish(url: string, caption: string, type: "image" | "video") {
+  //   const result = await this.twitterService.postPhoto(url, caption)
+  //   return result
+  // }
 
-  private async youtubePublish(url: string, caption: string) {
-    const result = await this.youtubeService.uploadShort(
-      url,
-      caption,
-      ""
-    )
-    return result
-  }
+  // private async youtubePublish(url: string, caption: string) {
+  //   const result = await this.youtubeService.uploadShort(
+  //     url,
+  //     caption,
+  //     ""
+  //   )
+  //   return result
+  // }
 }

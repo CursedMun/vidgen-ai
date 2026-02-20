@@ -32,7 +32,7 @@ export function configureServices(
   const youtubeService = new YoutubeService(db, yt, ytOauth2Client, youtubeApi);
   const twitterService = new TwitterService(twitterApi)
   const instagramService = new InstagramService(db, instagramApi);
-  const videoService = new VideoService(ai, openai, musicApi, twitterService, instagramService, youtubeService);
+  const videoService = new VideoService(ai, openai, musicApi);
   const transcriberService = new TranscriberService(db, openai, youtubeService);
   const tiktokService = new TikTokService(tiktokApi);
   const automationService = new AutomationService(db);
