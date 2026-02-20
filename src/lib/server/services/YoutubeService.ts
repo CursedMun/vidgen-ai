@@ -4,7 +4,7 @@ import { google } from 'googleapis';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { type Innertube, Utils } from 'youtubei.js';
-import type { TDatabase } from '../infrastructure/db/client';
+import { schema, type TDatabase } from '../infrastructure/db/client';
 import { channels, transcriptions } from '../infrastructure/db/schema';
 import type { YoutubeApi } from '../infrastructure/YoutubeAPI';
 export class YoutubeService {
@@ -14,6 +14,55 @@ export class YoutubeService {
     private ytOauth2Client: Auth.OAuth2Client,
     private youtubeApi: YoutubeApi,
   ) {}
+
+  public async getAuthUrl() {
+    return this.ytOauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: [
+        'https://www.googleapis.com/auth/youtube.upload',
+        'https://www.googleapis.com/auth/youtube.readonly',
+        'openid',
+        'https://www.googleapis.com/auth/userinfo.email'
+      ],
+      prompt: 'consent',
+    });
+  }
+
+  public async saveYotubeAccount(code: string) {
+    try {
+      console.log('ENTROU AQUIIIIII code: ', code);
+      const { tokens } = await this.ytOauth2Client.getToken(code);
+      console.log('tokens: ', tokens);
+
+      this.ytOauth2Client.setCredentials(tokens);
+      const youtube = google.youtube({
+        version: 'v3',
+        auth: this.ytOauth2Client,
+      });
+      const channelRes = await youtube.channels.list({
+        part: ['snippet'],
+        mine: true,
+      });
+      console.log('channelRes: ', channelRes.data.items);
+      const channelName =
+      channelRes.data.items?.[0]?.snippet?.title ?? 'Canal YouTube';
+
+      console.log('channelName: ', channelName);
+      return await this.db
+        .insert(schema.youtubeAccounts)
+        .values({
+          name: channelName,
+          email: "",
+          refreshToken: tokens.refresh_token!,
+          accessToken: tokens.access_token,
+          expiryDate: tokens.expiry_date,
+        })
+        .returning();
+    } catch (error) {
+      console.error("Detalhe do Erro no getToken:", error);
+      throw error;
+    }
+  }
 
   public async fetchChannelLatestVideo(channel: typeof channels.$inferSelect) {
     try {
@@ -124,7 +173,7 @@ export class YoutubeService {
     if (!extractedVideoId) {
       throw new Error('Invalid YouTube URL.');
     }
-    const id = await this.youtubeApi.findChannelIdByUrl(extractedVideoId)
+    const id = await this.youtubeApi.findChannelIdByUrl(extractedVideoId);
     if (!id) {
       throw new Error('Video not found.');
     }
@@ -150,7 +199,7 @@ export class YoutubeService {
   public async uploadShort(
     absoluteFilePath: string,
     title: string,
-    description: string
+    description: string,
   ) {
     const youtube = google.youtube({
       version: 'v3',
@@ -160,7 +209,6 @@ export class YoutubeService {
     const root = process.cwd();
     const videoPath = path.join(root, 'static', absoluteFilePath);
     try {
-
       if (!fs.existsSync(videoPath)) {
         throw new Error(`Ficheiro não encontrado: ${videoPath}`);
       }
@@ -198,6 +246,4 @@ export class YoutubeService {
       throw new Error(`YouTube upload failed: ${error.message}`);
     }
   }
-
-
 }

@@ -6,6 +6,7 @@
     import { Button } from '$lib/components/ui/button';
     import { Textarea } from "$lib/components/ui/textarea/index.js";
     import { Badge } from '$lib/components/ui/badge';
+  import { IconUser } from '@tabler/icons-svelte';
 
     let name = $state<string>('');
     let image = $state<string | undefined>('');
@@ -158,7 +159,16 @@
                           {new Date(preset.createdAt).toLocaleDateString()}
                         </Badge>
                       </div>
-                      
+                      {#if preset.avatar}
+                        <img 
+                          src={preset.avatar} 
+                          alt={preset.name} 
+                          class="h-20 w-20 rounded-full object-cover border"
+                          onerror={(e) => (e.currentTarget.src = "")} 
+                        />
+                      {:else}
+                        <IconUser size={20} class="text-zinc-600" />
+                      {/if}
                       <div class="grid grid-cols-1 gap-2 text-xs">
                         <div class="bg-muted/50 p-2 rounded">
                           <span class="font-semibold text-primary block mb-1">IMAGE PROMPT:</span>

@@ -55,7 +55,46 @@ export const presets = sqliteTable('presets', {
   createdAt: text('created_at').default(new Date().toISOString())
 });
 
+export const youtubeAccounts = sqliteTable('youtube_accounts', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  email: text('name'),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token').notNull(),
+  expiryDate: integer('expiry_date'),
+  clientId: text('client_id'),
+});
+
+export const publicationCrons = sqliteTable('publication_crons', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  presetId: integer('preset_id').notNull().references(() => presets.id),
+  title: text('title').notNull(),
+  description: text('description'),
+  interval: text('interval').notNull(),
+  sourceUrl: text('source_url'),
+  videoPath: text('video_path'),
+  mediaType: text('media_type').default('video'),
+  scheduledAt: text('scheduled_at').notNull(), // ISO String
+  status: text('status').default('generating'), // generating -> pending -> completed
+  createdAt: text('created_at').default(new Date().toISOString()),
+});
+
+export const cronExecutions = sqliteTable('cron_executions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  cronId: integer('cron_id').notNull().references(() => publicationCrons.id, { onDelete: 'cascade' }),
+  youtubeAccountId: integer('youtube_account_id').references(() => youtubeAccounts.id),
+  instagramAccountId: integer('instagram_account_id').references(() => instagramAccounts.id),
+
+  status: text('status', { enum: ['pending', 'processing', 'completed', 'failed'] }).default('pending'),
+  externalId: text('external_id'), // Link/ID of the post on the social media.
+  errorMessage: text('error_message'),
+  executedAt: text('executed_at'),
+});
+
 export type InstagramAccounts = typeof instagramAccounts.$inferSelect;
+export type YoutubeAccounts = typeof youtubeAccounts.$inferSelect;
+export type PublicationCrons = typeof publicationCrons.$inferSelect;
+export type CronExecutions = typeof cronExecutions.$inferSelect;
 export type Presets = typeof presets.$inferSelect;
 export type Transcription = typeof transcriptions.$inferSelect;
 export type NewTranscription = typeof transcriptions.$inferInsert;

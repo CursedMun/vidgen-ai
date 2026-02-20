@@ -20,9 +20,9 @@ export class VideoService {
   ) {}
 
 
-  public async generatePhoto(transcription: string): Promise<string> {
+  public async generatePhoto(imagePrompt: string, transcription: string): Promise<string> {
     try {
-      const prompt = await this.generateVideoPrompt(transcription);
+      const prompt = await this.generateVideoPrompt(imagePrompt, transcription);
       // const prompt = "Main Message: A high-performance professional footballer is recognized as an essential, top-tier talent and the best lateral player in the Portuguese league. Emotion: Dominance. Pacing: Medium."
       console.log('generatePhoto prompt: ', prompt);
       const imagePaths = await this.generateImage(prompt);
@@ -33,12 +33,13 @@ export class VideoService {
     }
   }
 
-  public async generateVideo(transcription: string): Promise<string> {
+  public async generateVideo(videoPrompt: string, audioPrompt: string ,transcription: string): Promise<string> {
     try {
       const targetSegments = 1;
 
-      const prompt = await this.generateVideoPrompt(transcription);
+      const prompt = await this.generateVideoPrompt(videoPrompt, transcription);
       const musicPrompt = await this.generateSpeechScriptFromTranscript(
+        audioPrompt,
         transcription,
         targetSegments,
       );
@@ -52,9 +53,11 @@ export class VideoService {
         audioPath = path.resolve('static', audioPath.replace(/^\//, ''));
       }
 
-      const videoPaths = await this.generateLongVideo(prompt, targetSegments);
+      const videoPath = await this.generateSoraVideo(prompt)
+      console.log('videoPath: ========Z', videoPath);
+
       const finalVideoPath = await this.mergeAudioAndVideo(
-        videoPaths,
+        [videoPath],
         audioPath,
       );
       console.log('finalVideoPath: ', finalVideoPath);
@@ -66,9 +69,9 @@ export class VideoService {
     }
   }
 
-  private async generateVideoPrompt(transcription: string) {
+  private async generateVideoPrompt(videoPrompt: string, transcription: string) {
     const prompt = `
-    You are a video prompt generator for vertical short-form videos.
+    ${videoPrompt}
 
     Instructions:
     - Format: vertical 9:16
@@ -112,6 +115,7 @@ export class VideoService {
   }
 
   private async generateSpeechScriptFromTranscript(
+    audioPrompt: string,
     transcription: string,
     segments: number,
   ): Promise<string> {
@@ -120,8 +124,7 @@ export class VideoService {
     const maxWords = totalDurationSeconds * 2.5;
 
     const prompt = `
-    You are an expert sports scriptwriter for short-form videos (TikTok/Reels).
-    Your goal is to transform a transcription into a natural, engaging narration for the "Sportiz" quiz.
+    ${audioPrompt}
 
     Instructions:
     - Format: Natural spoken language (script).
@@ -215,6 +218,60 @@ export class VideoService {
       }
     }
     return generatedFiles;
+  }
+
+  private async generateSoraVideo(prompt: string): Promise<string> {
+    try {
+      console.log('Iniciando geração Sora com prompt:', prompt);
+      const videoJob = await this.openai.videos.create({
+        model: "sora-2",
+        prompt,
+        size: "720x1280", // vertical 9:16
+        seconds: "8",
+      });
+
+      // Polling
+      await this.waitForCompletion(videoJob.id);
+
+      // Download
+      const response = await this.openai.videos.downloadContent(videoJob.id);
+
+      const blob = await response.blob();
+      const buffer = Buffer.from(await blob.arrayBuffer());
+
+      const fileName = `video_${Date.now()}.mp4`;
+      const videoPath = path.resolve("static", fileName);
+
+      fs.writeFileSync(videoPath, buffer);
+
+      const outputDir = path.resolve('./static');
+      const filePath = path.join(outputDir, fileName);
+      console.log("✅ Vídeo salvo em:", filePath);
+      return filePath;
+    } catch (error) {
+      console.error('Erro no Sora:', (error as Error).message);
+      throw error;
+    }
+  }
+
+  private async waitForCompletion(videoId: string) {
+    while (true) {
+      const status = await this.openai.videos.retrieve(videoId);
+
+      console.log(
+        `Status: ${status.status} | Progress: ${status.progress ?? 0}%`
+      );
+
+      if (status.status === "completed") {
+        return status;
+      }
+
+      if (status.status === "failed") {
+        throw new Error("Video generation failed");
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
   }
 
   private async mergeAudioAndVideo(
@@ -311,10 +368,10 @@ export class VideoService {
     console.log('videoUrl: ', videoUrl);
     try {
 
-      if (platform === "instagram") {
-        const response = await this.instagramPublish(videoUrl, caption, type, accoundId as number)
-        return response;
-      }
+      // if (platform === "instagram") {
+      //   const response = await this.instagramPublish(videoUrl, caption, type, accoundId as number)
+      //   return response;
+      // }
       if (platform === "x") {
         const response = await this.twitterPublish(videoUrl, caption, type)
         return response;
@@ -332,18 +389,18 @@ export class VideoService {
     }
   }
 
-  private async instagramPublish(url: string, caption: string, type: "image" | "video", accoundId: number) {
-    await this.instagramService.setCurrentUser(accoundId)
-    if (type === "image") {
-      const result = await this.instagramService.postImageToInstagram(
-        url,
-        caption
-      )
-      return result
-    }
-    const result = await this.instagramService.uploadToInstagram(url, caption)
-    return result
-  }
+  // private async instagramPublish(url: string, caption: string, type: "image" | "video", accoundId: number) {
+  //   await this.instagramService.setCurrentUser(accoundId)
+  //   if (type === "image") {
+  //     const result = await this.instagramService.postImageToInstagram(
+  //       url,
+  //       caption
+  //     )
+  //     return result
+  //   }
+  //   const result = await this.instagramService.uploadToInstagram(url, caption)
+  //   return result
+  // }
 
   private async twitterPublish(url: string, caption: string, type: "image" | "video") {
     const result = await this.twitterService.postPhoto(url, caption)

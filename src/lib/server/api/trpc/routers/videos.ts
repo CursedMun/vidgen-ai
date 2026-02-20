@@ -46,7 +46,7 @@ export const videoRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.services.video.generateVideo(input.transcription);
+      return ctx.services.video.generateVideo("", "", input.transcription);
     }),
   remove: publicProcedure
     .input(z.object({ filename: z.string() }))
@@ -123,6 +123,11 @@ export const videoRouter = router({
     return await ctx.db
       .select()
       .from(schema.instagramAccounts);
+  }),
+  listYoutubeAccounts: publicProcedure.query(async ({ ctx }) => {
+    return await ctx.db
+      .select()
+      .from(schema.youtubeAccounts);
   }),
   authorizeX: publicProcedure.query(async ({ ctx }) => {
     const authUrl = await ctx.services.twitter.authLink(ctx.cookies);

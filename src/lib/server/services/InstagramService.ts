@@ -40,10 +40,18 @@ export class InstagramService {
     return publicUrlData.publicUrl;
   }
 
-  public async uploadToInstagram(videoPath: string, title: string) {
+  public async uploadToInstagram(urlPath: string, title: string, type: string | null) {
+    console.log('type:=====> ', type);
+    console.log('urlPath: ==========>', urlPath);
     try {
-      const initRes = await this.instagramApi.uploadReel(videoPath, title);
-      console.log('initRes: ', initRes);
+      const relativePath = urlPath.split('/static')[1];
+      const filename = relativePath.split('/').pop();
+      const publicUrl = await this.uploadToSupabase(`./static${relativePath}`, filename || `${type === "Video" ? "videp.mp4": "image.png"}`);
+      console.log('publicUrl: ==========>', publicUrl);
+      if (type === "Video") {
+        return await this.instagramApi.uploadReel(publicUrl, title);
+      }
+      return await this.postImageToInstagram(publicUrl, title)
     } catch (error) {
       console.error('Error uploadToInstagram:', error);
       throw error;
@@ -53,6 +61,7 @@ export class InstagramService {
   public async setCurrentUser(accountId: number) {
     try {
       const token = await this.getValidTokenByAccount(accountId);
+      console.log('setCurrentUser token: ====>', token);
       const account = await this.db
         .select()
         .from(schema.instagramAccounts)

@@ -1,4 +1,5 @@
-import { configureApp } from '@/server';
+import { configureApp, initCore } from '@/server';
+import { AutomationWorker } from '@/server/AutomationWorker';
 import { appRouter } from '@/server/api/trpc/root';
 import type { Handle, RequestEvent } from '@sveltejs/kit';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
@@ -25,7 +26,33 @@ export function trpcHandler(event: RequestEvent) {
     }
   });
 }
+async function startAutomation() {
+  if (global.__automation_worker_running) {
+    return;
+  }
+  const { services, db } = await initCore();
+  const worker = new AutomationWorker(
+    db,
+    services.transcriber,
+    services.video,
+    services.youtube,
+    services.instagram
+  );
+
+  global.__automation_worker_running = setInterval(async () => {
+    try {
+      await worker.processPendingCrons();
+    } catch (err) {
+      console.error("Error Worker:", err);
+    }
+  }, 60000);
+}
+if (!global.__worker) {
+  startAutomation();
+  global.__worker = true;
+}
 export const handle: Handle = async ({ event, resolve }) => {
+  event.locals.createContext = async (e: RequestEvent) => configureApp(e);
   if (
     event.url.pathname.startsWith(`${trpcPathBase}/`) &&
     (event.request.method === 'GET' || event.request.method === 'POST')

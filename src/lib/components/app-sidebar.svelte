@@ -21,6 +21,16 @@
 				url: "/presets",
 				icon: DashboardIcon,
 			},
+			{
+				title: "Social Media",
+				url: "/social",
+				icon: DashboardIcon,
+			},
+			{
+				title: "Transcriptions",
+				url: "/transcriptions",
+				icon: DashboardIcon,
+			},
 		],
 		navClouds: [],
 		navSecondary: [
