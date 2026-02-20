@@ -1,6 +1,4 @@
 import { schema, type TDatabase } from '../infrastructure/db/client';
-
-
 export class AutomationService {
     constructor(private db: TDatabase) {}
 

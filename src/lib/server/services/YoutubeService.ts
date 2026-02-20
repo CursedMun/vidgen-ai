@@ -200,7 +200,28 @@ export class YoutubeService {
     absoluteFilePath: string,
     title: string,
     description: string,
+    accountId: number,
   ) {
+
+    const [account] = await this.db
+      .select()
+      .from(schema.youtubeAccounts)
+      .where(eq(schema.youtubeAccounts.id, accountId));
+    if (!account || !account.refreshToken) {
+      throw new Error(`Refresh token não encontrado para a conta ID: ${accountId}`);
+    }
+
+    this.ytOauth2Client.setCredentials({
+      refresh_token: account.refreshToken
+    });
+
+    try {
+      const { credentials } = await this.ytOauth2Client.refreshAccessToken();
+      this.ytOauth2Client.setCredentials(credentials);
+    } catch (refreshError: any) {
+      throw new Error(`Falha ao renovar token da conta ${accountId}: ${refreshError.message}`);
+    }
+
     const youtube = google.youtube({
       version: 'v3',
       auth: this.ytOauth2Client,

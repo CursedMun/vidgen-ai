@@ -10,8 +10,7 @@ import {
   YOUTUBE_API_KEY,
   YT_CLIENT_ID,
   YT_CLIENT_SECRET,
-  YT_REDIRECT_URI,
-  YT_REFRESH_TOKEN
+  YT_REDIRECT_URI
 } from '$env/static/private';
 import { GoogleGenAI } from '@google/genai';
 import type { Cookies, RequestEvent } from '@sveltejs/kit';
@@ -40,7 +39,6 @@ export async function initCore() {
 
   const yt = await Innertube.create({ cache: new UniversalCache(true) });
   const ytOauth2Client = new google.auth.OAuth2(YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REDIRECT_URI);
-
   const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
   const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
   const youtubeApi = new YoutubeApi(YOUTUBE_API_KEY);
@@ -65,18 +63,11 @@ export async function configureApp(event: RequestEvent) {
     return rawApp;
   }
   const yt = await Innertube.create({ cache: new UniversalCache(true) });
-
-
-const ytOauth2Client = new google.auth.OAuth2(
-  YT_CLIENT_ID,
-  YT_CLIENT_SECRET,
-  YT_REDIRECT_URI
-);
-
-// Refresh Token
-ytOauth2Client.setCredentials({
-  refresh_token: YT_REFRESH_TOKEN
-});
+  const ytOauth2Client = new google.auth.OAuth2(
+    YT_CLIENT_ID,
+    YT_CLIENT_SECRET,
+    YT_REDIRECT_URI
+  );
 
   Platform.shim.eval = async (
     data: Types.BuildScriptResult,

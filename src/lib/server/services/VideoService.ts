@@ -43,6 +43,7 @@ export class VideoService {
         transcription,
         targetSegments,
       );
+      console.log('musicPrompt: ', musicPrompt);
 
       let audioPath = '';
       const audioUrl = await this.musicApi.generateMusic(musicPrompt);
@@ -121,8 +122,9 @@ export class VideoService {
   ): Promise<string> {
     // 8 segunds
     const totalDurationSeconds = segments * 8;
-    const maxWords = totalDurationSeconds * 2.5;
-
+    const calculatedWords = totalDurationSeconds * 2.5;
+    const minWords = 25;
+    const maxWords = Math.max(minWords, calculatedWords);
     const prompt = `
     ${audioPrompt}
 
