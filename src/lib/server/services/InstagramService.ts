@@ -7,7 +7,6 @@ import { schema, type TDatabase } from '../infrastructure/db/client';
 import type { InstagramApi } from '../infrastructure/InstagramApi';
 
 const supabaseUrl = 'https://knepxsusnvopbojcrjpn.supabase.co';
-console.log('SUPABASE_KEY: ', SUPABASE_KEY);
 const supabase = createClient(supabaseUrl, SUPABASE_KEY);
 export class InstagramService {
   constructor(
@@ -40,10 +39,21 @@ export class InstagramService {
     return publicUrlData.publicUrl;
   }
 
-  public async uploadToInstagram(videoPath: string, title: string) {
+  public async uploadToInstagram(urlPath: string, title: string, type: string | null) {
     try {
-      const initRes = await this.instagramApi.uploadReel(videoPath, title);
-      console.log('initRes: ', initRes);
+      let relativePath = '';
+      if (urlPath.includes('/static')) {
+        relativePath = urlPath.split('/static')[1];
+      } else {
+        relativePath = urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
+      }
+      const filename = path.basename(urlPath);
+      const localFileSystemPath = `./static${relativePath}`;
+      const publicUrl = await this.uploadToSupabase(localFileSystemPath, filename || (type === "Video" ? "video.mp4" : "image.png"));
+      if (type === "Video") {
+        return await this.instagramApi.uploadReel(publicUrl, title);
+      }
+      return await this.postImageToInstagram(publicUrl, title)
     } catch (error) {
       console.error('Error uploadToInstagram:', error);
       throw error;
@@ -70,7 +80,6 @@ export class InstagramService {
   public async postImageToInstagram(imageUrl: string, title: string) {
     try {
       const resId = await this.instagramApi.uploadImage(imageUrl, title);
-      console.log('post ID:', resId);
       return resId
     } catch (error) {
       console.error('Error InstagramService:', error);

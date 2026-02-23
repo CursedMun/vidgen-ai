@@ -8,6 +8,7 @@ import type { InstagramApi } from '../infrastructure/InstagramApi';
 import type { TiktokApi } from '../infrastructure/TiktokApi';
 import type { TopMediAiApi } from '../infrastructure/TopMediAiApi';
 import type { YoutubeApi } from '../infrastructure/YoutubeAPI';
+import { AutomationService } from './AutomationService';
 import { InstagramService } from './InstagramService';
 import { SchedulerService } from './SchedulerService';
 import { TikTokService } from './TikTokService';
@@ -31,9 +32,10 @@ export function configureServices(
   const youtubeService = new YoutubeService(db, yt, ytOauth2Client, youtubeApi);
   const twitterService = new TwitterService(twitterApi)
   const instagramService = new InstagramService(db, instagramApi);
-  const videoService = new VideoService(ai, openai, musicApi, twitterService, instagramService, youtubeService);
+  const videoService = new VideoService(ai, openai, musicApi);
   const transcriberService = new TranscriberService(db, openai, youtubeService);
   const tiktokService = new TikTokService(tiktokApi);
+  const automationService = new AutomationService(db);
   return {
     scheduler: new SchedulerService(db, transcriberService, youtubeService),
     transcriber: transcriberService,
@@ -41,6 +43,7 @@ export function configureServices(
     video: videoService,
     tiktok: tiktokService,
     instagram: instagramService,
-    twitter: twitterService
+    twitter: twitterService,
+    automation: automationService
   };
 }

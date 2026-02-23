@@ -4,8 +4,10 @@
 	import { Button } from "$lib/components/ui/button/index.js";
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 	import type { Icon } from "@tabler/icons-svelte";
+  import { page } from "$app/state";
 
 	let { items }: { items: { title: string; url: string; icon?: Icon }[] } = $props();
+	let path = page.url.pathname
 </script>
 
 <Sidebar.Group>
@@ -13,8 +15,8 @@
 		<Sidebar.Menu>
 			<Sidebar.MenuItem class="flex items-center gap-2">
 				<Sidebar.MenuButton
-					class="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
 					tooltipContent="Dashboard"
+					isActive={path === "/"}
 					onclick={() => window.location.href = `/`}
 				>
 					<CirclePlusFilledIcon />
@@ -25,7 +27,7 @@
 		<Sidebar.Menu>
 			{#each items as item (item.title)}
 				<Sidebar.MenuItem>
-					<Sidebar.MenuButton onclick={() => window.location.href = `${item.url}`} tooltipContent={item.title}>
+					<Sidebar.MenuButton isActive={path === item.url} onclick={() => window.location.href = `${item.url}`} tooltipContent={item.title}>
 						{#if item.icon}
 							<item.icon />
 						{/if}
