@@ -6,7 +6,13 @@ export const publicationRouter = router({
     createCron: publicProcedure
       .input(z.object({
         presetId: z.number(),
-        platforms: z.object({ instagram: z.boolean(), youtube: z.boolean() }),
+        selectedAccounts: z.array(z.object({
+          id: z.number(),
+          name: z.string(),
+          displayType: z.enum(['instagram', 'youtube']),
+          instagramBusinessId: z.string().optional().nullable(),
+          youtubeChannelId: z.string().optional().nullable(),
+        })),
         sourceUrl: z.string(),
         interval: z.string(),
         mediaType: z.string(),

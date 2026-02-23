@@ -1,28 +1,70 @@
 <script lang="ts">
-  import ChannelsJobs from '$lib/components/channels-jobs.svelte';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { createTrpcClient } from '$lib/trpc/client';
-  import { Checkbox } from '@/components/ui/checkbox';
+  import { 
+    IconCheck, 
+    IconSelector, 
+    IconBrandYoutube, 
+    IconBrandInstagram,
+    IconExternalLink,
+    IconVideo,
+    IconX,
+    IconLoader2,
+    IconClock,
+
+  } from '@tabler/icons-svelte';
+  import * as Command from "$lib/components/ui/command";
+  import * as Popover from "$lib/components/ui/popover";
   import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-  import { formatTimestamp, snippet } from '@/utils';
+  import * as Table from "$lib/components/ui/table";
+  import { cn } from '@/utils';
+  
   const trpc = createTrpcClient();
 
   let presets = $state(
     [] as Awaited<ReturnType<typeof trpc.presets.list.query>>,
   );
+  let savedCrons= $state<any[]>([]);
+  let allAccounts = $state<any[]>([]);
 
-  let selectedPlatform = $state<'instagram' | 'youtube' | 'x' | 'tiktok' | null>(null);
-  let selectedAccountId = $state<number | null>(null);
   let generatedImages = $state<{ id: string; url: string; name: string; relativePath: string }[]>([]);
   let generatedVideos = $state<{ id: string; url: string; name: string; relativePath: string }[]>([]);
-  let isGeneratingVideoId = $state<number | null>(null);
-  let isPublishing = $state<string | null>(null);
-  let accounts = $state<{ id: number; name: string; expiresAt: string; updatedAt: string | null; instagramBusinessId: string; accessToken: string; }[]>([]);
 
+
+  let open = $state(false);
+  let selectedAccounts = $state<any[]>([]);
+  let selectedLabels = $derived(
+    selectedAccounts.map(a => a.name).join(", ") || "Selecionar contas..."
+  );
+
+  function toggleAccount(account: any) {
+    const exists = selectedAccounts.some(a => a.id === account.id);
+    if (exists) {
+      selectedAccounts = selectedAccounts.filter(a => a.id !== account.id);
+    } else {
+      const platform = account.instagramBusinessId ? 'instagram' : 'youtube';
+      
+      const accountWithPlatform = {
+        ...account,
+        displayType: platform 
+      };
+      
+      selectedAccounts = [...selectedAccounts, accountWithPlatform];
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-500/10 text-green-500 border-green-500/20';
+      case 'failed': return 'bg-red-500/10 text-red-500 border-red-500/20';
+      case 'processing': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      default: return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+    }
+  };
 
   let platforms = $state({ instagram: false, youtube: false });
   let interval = $state("6h");
@@ -34,91 +76,16 @@
   const load = async () => {
     generatedVideos = await trpc.videos.list.query();
     generatedImages = await trpc.videos.listImages.query();
-    accounts = await trpc.videos.listInstagramAccounts.query();
+    const instaAcconts = await trpc.videos.listInstagramAccounts.query();
+    const youtubeAcconts = await trpc.videos.listYoutubeAccounts.query();
+    allAccounts = [...instaAcconts, ...youtubeAcconts]
     presets =  await trpc.presets.list.query();
+    savedCrons = await trpc.presets.listCrons.query()
   };
-
-  async function publishVideo(video: any, platform: 'instagram' | 'x' | 'tiktok' | 'youtube' | null) {
-    console.log('selectedAccountId: ', selectedAccountId);
-    console.log('platform: ', platform);
-  if (!platform)  {
-    return alert(`Error: Select platform`);
-  }
-  const idKey = `${video.id}-${platform}`;
-  isPublishing = idKey;
-  if (!selectedPlatform) return alert("Seleciona uma plataforma!");
-  if (selectedPlatform === 'instagram' && !selectedAccountId) return alert("Seleciona a conta do Instagram!");
-  try {
-    const result = await trpc.videos.publish.mutate({
-      filename: video.name,
-      platform,
-      caption: "Teste direto do Dashboard!",
-      type: "video",
-      accountId: selectedAccountId === null ? undefined : selectedAccountId
-    });
-
-    if (result.success) {
-      alert(`Posted successfully on ${platform}!`);
-    }
-  } catch (error: any) {
-    alert(`Error: ${error.message}`);
-  } finally {
-    isPublishing = null;
-  }
-}
-
-async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') {
-  const idKey = `${image.id}-${platform}`;
-  isPublishing = idKey;
-  
-  try {
-    const result = await trpc.videos.publish.mutate({
-      filename: image.name,
-      platform,
-      caption: "Teste direto do Dashboard!",
-      type: "image",
-      accountId: selectedAccountId === null ? undefined : selectedAccountId
-    });
-
-    if (result.success) {
-      alert(`Posted successfully on ${platform}!`);
-    }
-  } catch (error: any) {
-    alert(`Error: ${error.message}`);
-  } finally {
-    isPublishing = null;
-  }
-}
 
   $effect(() => {
     load();
   });
-
-  async function generateMidia(id: number, text: string | null) {
-    isGeneratingVideoId = id;
-    try {
-      await trpc.videos.generate.mutate({ transcriptionId: id, transcription: text || "" });
-      generatedVideos = await trpc.videos.list.query();
-      alert("Video successfully generated.");
-    } catch (error) {
-      alert(`Error:Error generating video.`);
-    } finally {
-      isGeneratingVideoId = null;
-    }
-  }
-  
-
-  // Track expanded transcripts
-  let expandedTranscripts = $state<Record<number, boolean>>({});
-  const toggleTranscript = (id: number) => {
-    expandedTranscripts[id] = !expandedTranscripts[id]; // Trigger reactivity
-  };
-
-  let loadingVideoId = $state(false);
-  const loadVideo = (id: number) => {
-    loadingVideoId = !loadingVideoId;
-  };
-
 
   const triggerInterval = $derived(
     interval === "1h" ? "Cada 1 hora" : 
@@ -141,7 +108,7 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') 
     try {
       await trpc.publication.createCron.mutate({
         presetId: Number(presetValue),
-        platforms,
+        selectedAccounts,
         sourceUrl,
         interval,
         mediaType,
@@ -183,7 +150,7 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') 
               </SelectContent>
             </Select>
           </div>
-          <div class="space-y-2">
+          <!-- <div class="space-y-2">
             <Label>Accounts</Label>
             <div class="flex gap-3">
             <div class="flex items-center gap-1">
@@ -200,10 +167,70 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') 
             <Label>RSS ou Canal YT</Label>
             <Input bind:value={sourceUrl} placeholder="URL do Feed ou Canal" class="w-full" />
           </div>
+        </div> -->
+
+        <div class="space-y-2">
+          <Label>Contas de Destino</Label>
+          
+          <Popover.Root bind:open>
+            <Popover.Trigger>
+              {#snippet child({ props })}
+                <Button
+                  {...props}
+                  variant="outline"
+                  role="combobox"
+                  type="button"
+                  class="w-full justify-between"
+                >
+                  <span class="truncate">{selectedLabels}</span>
+                  <IconSelector class="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              {/snippet}
+            </Popover.Trigger>
+        
+            <Popover.Content class="w-[300px] p-0" side="bottom" align="start">
+              <Command.Root>
+                <Command.List>
+                    <Command.Empty>Nenhuma conta encontrada.</Command.Empty>
+                    <Command.Group>
+                      {#each allAccounts as account (account.id)}
+                        {@const isInstagram = !!account.instagramBusinessId}
+                        <Command.Item
+                          value={account.name}
+                          onSelect={() => toggleAccount(account)}
+                          class="flex items-center gap-2 cursor-pointer"
+                        >
+                          <div class="flex h-4 w-4 items-center justify-center">
+                            {#if selectedAccounts.some(a => a.id === account.id)}
+                              <IconCheck class="h-4 w-4 text-primary" />
+                            {/if}
+                          </div>
+                    
+                          {#if isInstagram}
+                            <IconBrandInstagram class="h-4 w-4 text-pink-500" />
+                          {:else}
+                            <IconBrandYoutube class="h-4 w-4 text-red-500" />
+                          {/if}
+                    
+                          <span class="flex-1 truncate">{account.name}</span>
+                          <span class="text-[10px] uppercase opacity-50">
+                            {isInstagram ? 'Insta' : 'YT'}
+                          </span>
+                        </Command.Item>
+                      {/each}
+                    </Command.Group>
+                </Command.List>
+              </Command.Root>
+            </Popover.Content>
+          </Popover.Root>
+        </div>
+        
+        <div class="space-y-2">
+          <Label>Fonte de Conteúdo (RSS ou Canal YT)</Label>
+          <Input bind:value={sourceUrl} placeholder="https://..." class="w-full" />
         </div>
   
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="space-y-2">
+        <div class="grid-cols-1 md:grid-cols-3">
             <Label>Intervalo</Label>
             <Select type="single" bind:value={interval}>
               <SelectTrigger class="w-full">{triggerInterval}</SelectTrigger>
@@ -214,9 +241,8 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') 
                 <SelectItem value="24h">Diário</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-  
-          <div class="space-y-2">
+        </div>
+          <div class="grid-cols-1 md:grid-cols-3">
             <Label>Tipo</Label>
             <Select type="single" bind:value={mediaType}>
               <SelectTrigger class="w-full">{mediaType}</SelectTrigger>
@@ -227,7 +253,7 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') 
             </Select>
           </div>
   
-          <div class="space-y-2">
+          <div class="grid-cols-1 md:grid-cols-3">
             <Label>Modelo</Label>
             <Select type="single" bind:value={aiModel}>
               <SelectTrigger class="w-full">{aiModel}</SelectTrigger>
@@ -237,13 +263,69 @@ async function publishImage(image: any, platform: 'instagram' | 'x' | 'tiktok') 
               </SelectContent>
             </Select>
           </div>
-        </div>
-  
+        <div >
         <Button variant="default" class="w-full bg-green-600 hover:bg-green-700 mt-4" onclick={() => addAutomation()}>
           Ativar
         </Button>
+        </div>
       </Card.Content>
     </Card.Root>
+  </section>
+  <section class="mt-10 space-y-4">
+    <div class="flex items-center justify-between">
+      <Card.Title>Active Automation</Card.Title>
+      <Badge variant="outline">{savedCrons.length} Crons</Badge>
+    </div>
+  
+    <div class="rounded-md border bg-card">
+      <Table.Root class="text-zinc-800">
+        <Table.Header>
+          <Table.Row>
+            <Table.Head>Automação</Table.Head>
+            <Table.Head>Preset</Table.Head>
+            <Table.Head>Intervalo</Table.Head>
+            <Table.Head>Status</Table.Head>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          {#each savedCrons as cron (cron.id)}
+            <Table.Row>
+              <Table.Cell class="font-medium">
+                <div class="flex flex-col">
+                  <span class="truncate max-w-[300px]">{cron.title}</span>
+                  <span class="text-[10px] text-muted-foreground">ID: #{cron.id}</span>
+                </div>
+              </Table.Cell>
+              <Table.Cell>{cron.presetName || 'N/A'}</Table.Cell>
+              <Table.Cell>
+                <div class="flex items-center gap-1 text-xs">
+                  <IconClock size={14} />
+                  {cron.interval}
+                </div>
+              </Table.Cell>
+              <Table.Cell>
+                <Badge class={cn("capitalize font-normal", getStatusColor(cron.status))}>
+                  {#if cron.status === 'processing'}
+                    <IconLoader2 size={12} class="mr-1 animate-spin" />
+                  {:else if cron.status === 'completed'}
+                    <IconCheck size={12} class="mr-1" />
+                  {:else if cron.status === 'failed'}
+                    <IconX size={12} class="mr-1" />
+                  {/if}
+                  {cron.status}
+                </Badge>
+              </Table.Cell>
+            </Table.Row>
+          {:else}
+            <Table.Row>
+              <Table.Cell colspan={5} class="h-24 text-center text-muted-foreground">
+                Nenhuma automação configurada.
+              </Table.Cell>
+            </Table.Row>
+          {/each}
+        </Table.Body>
+      </Table.Root>
+    </div>
   </section>
   <section class="mt-10">
     <Card.Root>
