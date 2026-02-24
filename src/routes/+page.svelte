@@ -38,7 +38,7 @@ let generatedImages = $state<
 let generatedVideos = $state<
 	{ id: string; url: string; name: string; relativePath: string }[]
 >([]);
-
+let hoveredVideoId = $state<string | null>(null);
 let open = $state(false);
 let selectedAccounts = $state<any[]>([]);
 const selectedLabels = $derived(
