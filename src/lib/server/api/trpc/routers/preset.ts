@@ -1,6 +1,6 @@
-import { presets, publicationCrons } from '@/server/infrastructure/db/schema';
+import { cronExecutions, presets, publicationCrons } from '@/server/infrastructure/db/schema';
 import { publicProcedure, router } from '@/server/infrastructure/trpc/server';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 
 export const presetRouter = router({
@@ -24,6 +24,7 @@ export const presetRouter = router({
   create: publicProcedure
     .input(z.object({
       name: z.string(),
+      description: z.string().optional().nullable(),
       imagePrompt: z.string(),
       videoPrompt: z.string(),
       audioPrompt: z.string(),
@@ -33,9 +34,26 @@ export const presetRouter = router({
       return await ctx.db.insert(presets).values(input);
     }),
 
-  delete: publicProcedure
+  deletePreset: publicProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      return await ctx.db.delete(presets).where(eq(presets.id, input.id));
-    })
+    .mutation(async ({ input, ctx }) => {
+      return await ctx.db.transaction(async (tx) => {
+        // Delete the cron executions for this preset.
+        await tx.delete(cronExecutions)
+          .where(inArray(
+            cronExecutions.cronId,
+            tx.select({ id: publicationCrons.id })
+              .from(publicationCrons)
+              .where(eq(publicationCrons.presetId, input.id))
+          ));
+
+        // Delete the crons.
+        await tx.delete(publicationCrons)
+          .where(eq(publicationCrons.presetId, input.id));
+
+        // Delete the preset.
+        return await tx.delete(presets)
+          .where(eq(presets.id, input.id));
+      });
+    }),
 });

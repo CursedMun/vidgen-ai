@@ -6,9 +6,10 @@
     import { Button } from '$lib/components/ui/button';
     import { Textarea } from "$lib/components/ui/textarea/index.js";
     import { Badge } from '$lib/components/ui/badge';
-  import { IconUser } from '@tabler/icons-svelte';
+  import { IconTrash, IconUser } from '@tabler/icons-svelte';
 
     let name = $state<string>('');
+    let description = $state<string>('');
     let image = $state<string | undefined>('');
     let imagePrompt = $state<string>('');;
     let videoPrompt = $state<string>('');;
@@ -17,14 +18,15 @@
     const trpc = createTrpcClient();
 
     let presets = $state(
-    [] as Awaited<ReturnType<typeof trpc.presets.list.query>>,
-  );
+      [] as Awaited<ReturnType<typeof trpc.presets.list.query>>,
+    );
     async function savePreset() {
       if (!name) return alert("Dê um nome ao preset");
   
       try {
         await trpc.presets.create.mutate({ 
           name, 
+          description,
           imagePrompt, 
           videoPrompt, 
           audioPrompt,
@@ -33,6 +35,7 @@
         
         // clear
         name = '';
+        description = "";
         image = '';
         imagePrompt = '';
         videoPrompt = '';
@@ -45,19 +48,25 @@
       }
     }
 
-    function handleFileChange(event) {
-    const target = event.target;
-    const file = target.files?.[0];
-    console.log('file: ', file);
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        image = e.target?.result;
-        console.log('image: ', image);
-      };
-      reader.readAsDataURL(file);
+    function handleFileChange(event: any) {
+      const target = event.target;
+      const file = target.files?.[0];
+      console.log('file: ', file);
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          image = e.target?.result;
+          console.log('image: ', image);
+        };
+        reader.readAsDataURL(file);
+      }
     }
-  }
+    async function handleDelete(id: number) {
+      if (!confirm("This will delete this preset and ALL associated cron jobs.")) return;
+      
+      await trpc.presets.deletePreset.mutate({ id: id });
+      presets = await trpc.presets.list.query();
+    }
 
     const load = async () => {
         presets = await trpc.presets.list.query();
@@ -82,16 +91,24 @@
               <Card.Title>New Preset</Card.Title>
               <Card.Description>
                 Define the specific instructions that AI models. <br/>
-                Ex: "You are an expert sports scriptwriter for short-form videos (TikTok/Reels).
+                Ex: "You are an expert sports scriptwriter for short-form videos (Shorts/Reels).
                 Your goal is to transform a transcription into a natural, engaging narration."
               </Card.Description>
             </Card.Header>
             <Card.Content class="space-y-4">
               <div class="space-y-2">
                 <Label for="name">Preset name</Label>
-                <Input id="name" bind:value={name} placeholder="Ex: Notícias de Futebol" />
+                <Input id="name" bind:value={name} placeholder="Ex: Preset 01" />
               </div>
-
+              <div class="grid gap-2">
+                <Label for="description">Description (Optional)</Label>
+                <Textarea 
+                  id="description" 
+                  placeholder="Description on the social media"
+                  bind:value={description}
+                  class="resize-none"
+                />
+              </div>
               <div class="space-y-2">
                 {#if image}
                     <img src={image} alt="Preview" class="h-12 w-12 rounded-full object-cover border" />
@@ -102,17 +119,17 @@
       
               <div class="space-y-2">
                 <Label for="imagePrompt">Prompt: Image</Label>
-                <Textarea id="imagePrompt" bind:value={imagePrompt} placeholder="Instruções para a imagem..." rows={3} />
+                <Textarea id="imagePrompt" bind:value={imagePrompt} placeholder="Instructions for the image..." rows={3} />
               </div>
       
               <div class="space-y-2">
                 <Label for="videoPrompt">Prompt: Video</Label>
-                <Textarea id="videoPrompt" bind:value={videoPrompt} placeholder="Movimento e ritmo..." rows={3} />
+                <Textarea id="videoPrompt" bind:value={videoPrompt} placeholder="Movement and rhythm..." rows={3} />
               </div>
       
               <div class="space-y-2">
                 <Label for="audioPrompt">Prompt: Audio</Label>
-                <Textarea id="audioPrompt" bind:value={audioPrompt} placeholder="Estilo da narração..." rows={3} />
+                <Textarea id="audioPrompt" bind:value={audioPrompt} placeholder="Narrative style..." rows={3} />
               </div>
       
               <Button 
@@ -155,21 +172,35 @@
                     <div class="flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary/50">
                       <div class="flex items-center justify-between border-b pb-2">
                         <p class="font-bold text-lg">{preset.name}</p>
-                        <Badge variant="outline" class="text-[10px] uppercase">
-                          {new Date(preset.createdAt).toLocaleDateString()}
-                        </Badge>
+                        <div class="flex items-center justify-between gap-1">
+                          <Badge variant="outline" class="text-[10px] uppercase">
+                            {preset?.createdAt && new Date(preset?.createdAt).toLocaleDateString()}
+                          </Badge>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onclick={() => handleDelete(preset.id)}
+                          >
+                            <IconTrash size={16} />
+                          </Button>
+                      </div>
                       </div>
                       {#if preset.avatar}
                         <img 
                           src={preset.avatar} 
                           alt={preset.name} 
                           class="h-20 w-20 rounded-full object-cover border"
-                          onerror={(e) => (e.currentTarget.src = "")} 
                         />
                       {:else}
                         <IconUser size={20} class="text-zinc-600" />
                       {/if}
                       <div class="grid grid-cols-1 gap-2 text-xs">
+                        {#if preset.description}
+                        <div class="bg-muted/50 p-2 rounded">
+                          <span class="font-semibold text-primary block mb-1">Description:</span>
+                          <p class="text-muted-foreground line-clamp-2">{preset.description}</p>
+                        </div>
+                        {/if}
                         <div class="bg-muted/50 p-2 rounded">
                           <span class="font-semibold text-primary block mb-1">IMAGE PROMPT:</span>
                           <p class="text-muted-foreground line-clamp-2">{preset.imagePrompt}</p>

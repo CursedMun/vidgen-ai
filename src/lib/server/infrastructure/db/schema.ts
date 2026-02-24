@@ -47,6 +47,7 @@ export const instagramAccounts = sqliteTable('instagram_accounts', {
 export const presets = sqliteTable('presets', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(), // Ex: "Cinematic Sports", "TikTok Viral"
+  description: text("description"),
   imagePrompt: text('image_prompt').notNull(),
   videoPrompt: text('video_prompt').notNull(),
   audioPrompt: text('audio_prompt').notNull(),
