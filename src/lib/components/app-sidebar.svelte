@@ -8,6 +8,7 @@
 	import NavUser from "./nav-user.svelte";
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 	import type { ComponentProps } from "svelte";
+  import { IconBrandInstagram, IconFileDescriptionFilled, IconPresentationAnalytics } from "@tabler/icons-svelte";
 
 	const data = {
 		user: {
@@ -19,17 +20,17 @@
 			{
 				title: "Presets",
 				url: "/presets",
-				icon: DashboardIcon,
+				icon: IconPresentationAnalytics,
 			},
 			{
-				title: "Social Media",
+				title: "Social",
 				url: "/social",
-				icon: DashboardIcon,
+				icon: IconBrandInstagram,
 			},
 			{
 				title: "Transcriptions",
 				url: "/transcriptions",
-				icon: DashboardIcon,
+				icon: IconFileDescriptionFilled,
 			},
 		],
 		navClouds: [],
@@ -56,7 +57,7 @@
 	let { ...restProps }: ComponentProps<typeof Sidebar.Root> = $props();
 </script>
 
-<Sidebar.Root collapsible="offcanvas" {...restProps}>
+<!-- <Sidebar.Root collapsible="offcanvas" {...restProps}>
 	<Sidebar.Header>
 		<Sidebar.Menu>
 			<Sidebar.MenuItem>
@@ -73,9 +74,24 @@
 	</Sidebar.Header>
 	<Sidebar.Content>
 		<NavMain items={data.navMain} />
-		<!-- <NavSecondary items={data.navSecondary} class="mt-auto" /> -->
+		 <NavSecondary items={data.navSecondary} class="mt-auto" /> 
 	</Sidebar.Content>
 	<Sidebar.Footer>
 		<NavUser user={data.user} />
 	</Sidebar.Footer>
+</Sidebar.Root> -->
+<Sidebar.Root 
+    collapsible="offcanvas"
+    class="w-[82px] border-r border-zinc-200 bg-white" 
+    {...restProps}
+>
+    <Sidebar.Header class="flex items-center justify-center py-6 bg-white">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-950 text-white shadow-lg">
+            <InnerShadowTopIcon class="size-6" />
+        </div>
+    </Sidebar.Header>
+
+    <Sidebar.Content class=" bg-white overflow-x-hidden">
+        <NavMain items={data.navMain} />
+    </Sidebar.Content>
 </Sidebar.Root>

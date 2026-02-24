@@ -18,7 +18,6 @@ export class AutomationService {
           status: 'generating'
         }).returning().get(); 
     
-        // 2. Iterar sobre as contas
         for (const account of input.selectedAccounts) {
           tx.insert(schema.cronExecutions).values({
             cronId: cron.id,
