@@ -24,7 +24,7 @@
       const authUrlQuery = await trpc.youtube.getAuthUrl.query();
       console.log('authUrlQuery: ', authUrlQuery);
       if (authUrlQuery) {
-        // Abre a página de login do Google
+        // open login Google
         window.location.href = authUrlQuery;
       }
     }

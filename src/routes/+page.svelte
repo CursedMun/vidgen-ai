@@ -15,6 +15,8 @@
     IconX,
     IconLoader2,
     IconClock,
+    IconPlayerPlay,
+    IconDownload,
 
   } from '@tabler/icons-svelte';
   import * as Command from "$lib/components/ui/command";
@@ -33,7 +35,7 @@
 
   let generatedImages = $state<{ id: string; url: string; name: string; relativePath: string }[]>([]);
   let generatedVideos = $state<{ id: string; url: string; name: string; relativePath: string }[]>([]);
-
+  let hoveredVideoId = $state<string | null>(null);
 
   let open = $state(false);
   let selectedAccounts = $state<any[]>([]);
@@ -115,7 +117,7 @@
         aiModel
         
       });
-      
+      savedCrons = await trpc.presets.listCrons.query()
       alert("Automação ativada com sucesso!");
     } catch (e) {
       console.error(e);
@@ -327,22 +329,21 @@
       </Table.Root>
     </div>
   </section>
-  <section class="mt-10">
-    <Card.Root>
-      <Card.Header>
-        <div class="flex items-center justify-between">
-          <div class="space-y-1.5">
-            <Card.Description>Visual Assets</Card.Description>
-            <Card.Title>Generated Images</Card.Title>
-          </div>
-          <Badge variant="secondary">{generatedImages.length} Imagens</Badge>
+  <section class="mt-10 space-y-6">
+      <div class="flex items-center justify-between px-2">
+        <div>
+          <h2 class="text-2xl font-bold tracking-tight text-zinc-900">Generated Images</h2>
+          <p class="text-sm text-zinc-500">Vídeos gerados pela IA prontos para publicação.</p>
         </div>
-      </Card.Header>
-      <Card.Content>
+        <Badge variant="secondary" class="bg-zinc-100 text-zinc-700 border-none px-3 py-1">
+          {generatedImages.length} Imagens
+        </Badge>
+      </div>
+      <div>
         {#if generatedImages.length}
-          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1">
             {#each generatedImages as img}
-              <div class="group relative aspect-square overflow-hidden rounded-xl border bg-muted shadow-sm transition-all hover:ring-2 hover:ring-blue-500">
+              <div class="group relative aspect-square overflow-hidden rounded-xl border bg-muted shadow-sm transition-all hover:ring-2">
                 <img 
                   src={img.url} 
                   alt={img.name} 
@@ -356,10 +357,9 @@
             <p class="text-sm text-muted-foreground">Nenhuma imagem gerada ainda.</p>
           </div>
         {/if}
-      </Card.Content>
-    </Card.Root>
+        </div>
   </section>
-  <section class="mt-6">
+  <!-- <section class="mt-6">
     <Card.Root>
       <Card.Header>
         <div class="flex items-center justify-between">
@@ -391,5 +391,61 @@
         {/if}
       </Card.Content>
     </Card.Root>
+  </section> -->
+
+  <section class="mt-10 space-y-6">
+    <div class="flex items-center justify-between px-2">
+      <div>
+        <h2 class="text-2xl font-bold tracking-tight text-zinc-900">Galeria de Criações</h2>
+        <p class="text-sm text-zinc-500">Vídeos gerados pela IA prontos para publicação.</p>
+      </div>
+      <Badge variant="secondary" class="bg-zinc-100 text-zinc-700 border-none px-3 py-1">
+        {generatedVideos.length} Gerados
+      </Badge>
+    </div>
+    <div>
+    {#if generatedVideos.length}
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1">
+        {#each generatedVideos as video (video.url)}
+          <div 
+            class="group relative aspect-[9/16] overflow-hidden rounded-2xl bg-zinc-900 shadow-lg transition-all duration-500 hover:shadow-2xl hover:-translate-y-1"
+            onmouseenter={() => hoveredVideoId = video.url}
+            onmouseleave={() => hoveredVideoId = null}
+          >
+            <video 
+              src={video.url} 
+              autoplay 
+              muted 
+              loop 
+              playsinline
+              class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+            >
+              <track kind="captions" />
+            </video>
+  
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              <div class="absolute bottom-0 left-0 right-0 p-4">
+                <p class="mb-3 text-sm font-medium text-white line-clamp-2">{video.name}</p>
+                
+                <div class="flex items-center gap-2">
+                  <button class="flex-1 flex items-center justify-center gap-2 rounded-lg bg-white py-2 text-xs font-bold text-black hover:bg-zinc-200 transition-colors">
+                    <IconPlayerPlay size={14} fill="currentColor" />
+                    Automation
+                  </button>
+                  <!-- <button class="flex items-center justify-center rounded-lg bg-zinc-800/80 p-2 text-white hover:bg-zinc-700 transition-colors">
+                    <IconDownload size={16} />
+                  </button> -->
+                </div>
+              </div>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {:else}
+      <div class="flex h-64 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-zinc-200 bg-zinc-50/50">
+        <p class="text-sm text-zinc-400">No videos yet.</p>
+      </div>
+      {/if}
+    </div>
   </section>
 </main>

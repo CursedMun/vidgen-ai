@@ -19,7 +19,6 @@ export const presetRouter = router({
     .from(publicationCrons)
     .leftJoin(presets, eq(publicationCrons.presetId, presets.id))
     .orderBy(publicationCrons.id);
-    console.log('crons: ', crons);
     return crons
   }),
   create: publicProcedure
