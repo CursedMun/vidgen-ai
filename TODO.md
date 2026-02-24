@@ -17,7 +17,7 @@ Todo Vidgen-AI
 3. Tech improvement:
 - Change local save to S3 & local sqlite to MySQL/Postgres 
 - Add Error message to publication_crons
-
+- Change interval to cron
 Ivan:
 
 
