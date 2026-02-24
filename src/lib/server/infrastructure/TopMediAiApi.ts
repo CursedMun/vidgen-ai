@@ -31,6 +31,7 @@ export class TopMediAiApi {
   }
 
   public async generateMusic(text: string, speakerId: string = "f334eecc-3825-11ee-a861-00163e2ac61b"): Promise<string | null> {
+    console.log('text: ', text);
     try {
       const speaker = await this.getSpeakers()
       const res = await this.api
@@ -43,6 +44,7 @@ export class TopMediAiApi {
         })
         .json<any>();
 
+        console.log('generateMusic res:===================> ', res);
       if (res.status === 200 && res.data && res.data.oss_url) {
         return res.data.oss_url;
       }

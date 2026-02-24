@@ -1,12 +1,12 @@
 <script lang="ts">
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-	import { IconBrandInstagram, IconFileDescriptionFilled, IconPresentationAnalytics } from "@tabler/icons-svelte";
 	import HelpIcon from "@tabler/icons-svelte/icons/help";
 	import InnerShadowTopIcon from "@tabler/icons-svelte/icons/inner-shadow-top";
 	import SearchIcon from "@tabler/icons-svelte/icons/search";
 	import SettingsIcon from "@tabler/icons-svelte/icons/settings";
 	import type { ComponentProps } from "svelte";
 	import NavMain from "./nav-main.svelte";
+  import { IconAutomation, IconBrandInstagram, IconFileDescriptionFilled, IconPresentationAnalytics } from "@tabler/icons-svelte";
 
 	const data = {
 		user: {
@@ -19,6 +19,11 @@
 				title: "Presets",
 				url: "/presets",
 				icon: IconPresentationAnalytics,
+			},
+			{
+				title: "Automation",
+				url: "/automation",
+				icon: IconAutomation,
 			},
 			{
 				title: "Social",

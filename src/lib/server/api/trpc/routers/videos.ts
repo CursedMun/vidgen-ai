@@ -5,38 +5,35 @@ import path from 'node:path';
 import { z } from 'zod';
 
 export const videoRouter = router({
-  list: publicProcedure.query(async () => {
+  listMedia: publicProcedure.query(async () => {
     const videoDir = path.resolve('static/final_videos');
-    if (!fs.existsSync(videoDir)) return [];
-
-    const files = fs.readdirSync(videoDir);
-
-    return files
-      .filter((file) => file.endsWith('.mp4'))
-      .map((file) => ({
-        id: file,
-        name: file,
-        url: `/final_videos/${file}`,
-        relativePath: `/final_videos/${file}`,
-        createdAt: fs.statSync(path.join(videoDir, file)).birthtime,
-      }))
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  }),
-  listImages: publicProcedure.query(async () => {
     const imageDir = path.resolve('static/images');
-    if (!fs.existsSync(imageDir)) return [];
+    const videos = fs.existsSync(videoDir)
+      ? fs.readdirSync(videoDir)
+          .filter((file) => file.endsWith('.mp4'))
+          .map((file) => ({
+            id: `video-${file}`,
+            name: file,
+            url: `/final_videos/${file}`,
+            relativePath: `/final_videos/${file}`,
+            type: 'video' as const,
+            createdAt: fs.statSync(path.join(videoDir, file)).birthtime,
+          }))
+      : [];
+    const images = fs.existsSync(imageDir)
+      ? fs.readdirSync(imageDir)
+          .filter(file => /\.(png|jpg|jpeg|webp)$/i.test(file))
+          .map(file => ({
+            id: `image-${file}`,
+            name: file,
+            url: `/images/${file}`,
+            relativePath: `/images/${file}`,
+            type: 'image' as const,
+            createdAt: fs.statSync(path.join(imageDir, file)).birthtime
+          }))
+      : [];
 
-    const files = fs.readdirSync(imageDir);
-    return files
-      .filter(file => /\.(png|jpg|jpeg|webp)$/i.test(file))
-      .map(file => ({
-        id: file,
-        url: `/images/${file}`,
-        name: file,
-        relativePath: `/images/${file}`,
-        createdAt: fs.statSync(path.join(imageDir, file)).birthtime
-      }))
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return [...videos, ...images]
   }),
   generate: publicProcedure
     .input(
