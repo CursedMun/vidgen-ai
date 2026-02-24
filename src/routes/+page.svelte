@@ -1,9 +1,6 @@
 <script lang="ts">
-import { Badge } from "$lib/components/ui/badge";
 import { createTrpcClient } from "$lib/trpc/client";
-import {
-  IconPlayerPlay,
-} from "@tabler/icons-svelte";
+import { Play } from "lucide-svelte";
 
 const trpc = createTrpcClient();
 
@@ -23,24 +20,14 @@ $effect(() => {
 
 </script>
 
-<main class="container mx-auto flex flex-col py-8 gap-6 overflow-hidden">
-  <section class="space-y-6">
-    <div class="flex items-center justify-between px-2">
-      <div>
-        <h2 class="text-2xl font-bold tracking-tight text-foreground">Gallery</h2>
-        <p class="text-sm text-muted-foreground">AI-generated videos and images.</p>
-      </div>
-      <Badge variant="secondary" class="bg-secondary text-secondary-foreground border-none px-3 py-1">
-        {generatedMedia.length} Gerados
-      </Badge>
-    </div>
-  
+<main class="w-full h-full overflow-hidden">
+  <section>
     <div>
       {#if generatedMedia.length}
-        <div class="columns-2 gap-4 space-y-4 md:columns-3 lg:columns-4 xl:columns-5">
+        <div class="columns-2 gap-x-2 gap-y-2 md:columns-3 lg:columns-4 xl:columns-5">
           {#each generatedMedia as media (media.url)}
             <div 
-              class="group relative break-inside-avoid overflow-hidden rounded-2xl bg-card shadow-lg transition-all duration-500 hover:shadow-2xl hover:-translate-y-1"
+              class="group rounded-sm relative break-inside-avoid overflow-hidden bg-card transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 mb-2"
               onmouseenter={() => hoveredVideoId = media.url}
               onmouseleave={() => hoveredVideoId = null}
             >
@@ -58,7 +45,7 @@ $effect(() => {
                   </video>
                   <div class="absolute top-3 right-3 opacity-100 transition-opacity group-hover:opacity-0">
                     <div class="rounded-full bg-black/40 backdrop-blur-md p-1.5 text-white">
-                       <IconPlayerPlay size={12} fill="currentColor" />
+                       <Play size={12} fill="currentColor" />
                     </div>
                  </div>
                 </div>

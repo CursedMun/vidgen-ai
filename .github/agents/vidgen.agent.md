@@ -1,4 +1,5 @@
 ---
+
 description: 'Generate new components or update existing ones based on the current stack and design guidelines.'
 tools: ['vscode', 'execute', 'read', 'edit', 'search', 'web', 'agent', 'todo']
 ---
@@ -26,9 +27,9 @@ No CSS frameworks other than Tailwind.
 
 ---
 
-# 2. UI & Styling Rules (Very Important)
+## 2. UI & Styling Rules
 
-## 🎨 Color System (Critical Rule)
+### 🎨 Color System (Critical Rule)
 
 Always use the colors defined in:
 
@@ -67,7 +68,49 @@ If unsure about a color → inspect `src/app.css` first.
 
 ---
 
-# 3. Component System (shadcn-svelte Only)
+## 3. Icons (Lucide Only)
+
+### ✅ Icon Source Rule (Strict)
+
+**Only use Lucide icons** (via `lucide-svelte`).
+Do not use any other icon libraries (Heroicons, Phosphor, FontAwesome, Remix, Radix icons, custom SVG packs) unless explicitly requested.
+
+### 📦 Installation
+
+If icons are needed and the package is missing:
+
+```bash
+bun add lucide-svelte
+```
+
+### 🧩 Usage Rules
+
+* Import icons only from `lucide-svelte`
+* Use consistent sizing (default **16–20px** for UI icons)
+* Prefer `class="h-4 w-4"` or `class="h-5 w-5"` for sizing
+* Icons must inherit color (don’t hardcode colors); rely on semantic text classes like `text-muted-foreground`
+
+Example:
+
+```svelte
+<script lang="ts">
+  import { Search, Plus, Trash2 } from "lucide-svelte";
+</script>
+
+<button class="inline-flex items-center gap-2">
+  <Plus class="h-4 w-4" />
+  Create
+</button>
+```
+
+### ❌ Not Allowed
+
+* Inline SVG blobs pasted directly (unless explicitly required)
+* Any icon component not coming from `lucide-svelte`
+
+---
+
+## 4. Component System (shadcn-svelte Only)
 
 We use **shadcn-svelte** components.
 
@@ -84,9 +127,7 @@ Only create custom components when:
 
 Otherwise, always prefer the official component.
 
----
-
-## Available Components
+### Available Components
 
 You may use:
 
@@ -152,7 +193,7 @@ Typography
 
 ---
 
-# 4. Svelte 5 Rules
+## 5. Svelte 5 Rules
 
 Use **Svelte 5 syntax** properly:
 
@@ -165,7 +206,7 @@ Do not write Svelte 3-style code.
 
 ---
 
-# 5. tRPC Rules
+## 6. tRPC Rules
 
 * All server communication must go through **tRPC**
 * No direct fetch calls to backend routes
@@ -175,7 +216,7 @@ Do not write Svelte 3-style code.
 
 ---
 
-# 6. Drizzle + SQLite Rules
+## 7. Drizzle + SQLite Rules
 
 * Use Drizzle schema definitions
 * Keep schema centralized
@@ -197,7 +238,7 @@ db.select().from(users)
 
 ---
 
-# 7. Component Architecture
+## 8. Component Architecture
 
 When generating new UI:
 
@@ -208,7 +249,7 @@ When generating new UI:
 
 ---
 
-# 8. Forms
+## 9. Forms
 
 * Use shadcn `Form` components
 * Validate inputs
@@ -218,7 +259,7 @@ When generating new UI:
 
 ---
 
-# 9. Layout Principles
+## 10. Layout Principles
 
 * Use Tailwind spacing scale consistently
 * Respect dark mode
@@ -228,7 +269,7 @@ When generating new UI:
 
 ---
 
-# 10. Dark Mode
+## 11. Dark Mode
 
 * All components must support dark mode
 * Never hardcode light-only colors
@@ -236,7 +277,7 @@ When generating new UI:
 
 ---
 
-# 11. Data Tables
+## 12. Data Tables
 
 When generating tables:
 
@@ -247,7 +288,7 @@ When generating tables:
 
 ---
 
-# 12. Loading States
+## 13. Loading States
 
 Always include:
 
@@ -257,27 +298,27 @@ Always include:
 
 ---
 
-# 13. UX Consistency
+## 14. UX Consistency
 
 * Use Dialog for destructive confirmation
 * Use Sonner for toast feedback
-* Use consistent icon sizing
+* Use consistent icon sizing (see Lucide rules)
 * Use consistent border radius
 * Use `Card` for content grouping
 
 ---
 
-# 14. Code Quality Rules
+## 15. Code Quality Rules
 
 * No unused imports
 * No console.logs in production code
 * Strict typing
-* No any types unless unavoidable
+* No `any` types unless unavoidable
 * Clean formatting
 
 ---
 
-# 15. When Creating New Components
+## 16. When Creating New Components
 
 Before creating:
 
@@ -285,18 +326,20 @@ Before creating:
 2. If yes → install and use it
 3. If not → follow existing component patterns
 4. Respect `app.css` design tokens
-5. Keep styling semantic
+5. Use **Lucide icons only**
+6. Keep styling semantic
 
 ---
 
-# 16. What You Must Always Consider
+## 17. What You Must Always Consider
 
 Before generating anything, ask internally:
 
 * Does this follow Svelte 5?
 * Does this use tRPC correctly?
-* Does this respect app.css colors?
+* Does this respect `app.css` colors?
 * Is this using shadcn components?
+* Are icons **Lucide-only**?
 * Is dark mode supported?
 * Is it typed properly?
 

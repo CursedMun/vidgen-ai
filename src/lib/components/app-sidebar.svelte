@@ -1,12 +1,8 @@
 <script lang="ts">
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-	import HelpIcon from "@tabler/icons-svelte/icons/help";
-	import InnerShadowTopIcon from "@tabler/icons-svelte/icons/inner-shadow-top";
-	import SearchIcon from "@tabler/icons-svelte/icons/search";
-	import SettingsIcon from "@tabler/icons-svelte/icons/settings";
+	import { BarChart3, HelpCircle, Instagram, Layers, Search, Settings, Wrench, Zap } from "lucide-svelte";
 	import type { ComponentProps } from "svelte";
 	import NavMain from "./nav-main.svelte";
-  import { IconAutomation, IconBrandInstagram, IconFileDescriptionFilled, IconPresentationAnalytics } from "@tabler/icons-svelte";
 
 	const data = {
 		user: {
@@ -18,22 +14,22 @@
 			{
 				title: "Presets",
 				url: "/presets",
-				icon: IconPresentationAnalytics,
+				icon: BarChart3,
 			},
 			{
 				title: "Automation",
 				url: "/automation",
-				icon: IconAutomation,
+				icon: Zap,
 			},
 			{
 				title: "Social",
 				url: "/social",
-				icon: IconBrandInstagram,
+				icon: Instagram,
 			},
 			{
-				title: "Transcriptions",
-				url: "/transcriptions",
-				icon: IconFileDescriptionFilled,
+				title: "Tools",
+				url: "/tools",
+				icon: Wrench,
 			},
 		],
 		navClouds: [],
@@ -41,17 +37,17 @@
 			{
 				title: "Settings",
 				url: "#",
-				icon: SettingsIcon,
+				icon: Settings,
 			},
 			{
 				title: "Get Help",
 				url: "#",
-				icon: HelpIcon,
+				icon: HelpCircle,
 			},
 			{
 				title: "Search",
 				url: "#",
-				icon: SearchIcon,
+				icon: Search,
 			},
 		],
 		documents: [],
@@ -63,16 +59,16 @@
 
 <Sidebar.Root 
     collapsible="offcanvas"
-    class="w-[82px] border-r border-sidebar-border bg-sidebar" 
+    class=" bg-background" 
     {...restProps}
 >
-    <Sidebar.Header class="flex items-center justify-center py-6 bg-sidebar">
-        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-lg">
-            <InnerShadowTopIcon class="size-6" />
+    <Sidebar.Header class="h-(--header-height) flex items-center justify-center bg-background  border-sidebar-border">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl text-sidebar-primary-foreground shadow-lg">
+            <Layers class="size-6" />
         </div>
     </Sidebar.Header>
 
-    <Sidebar.Content class="bg-sidebar overflow-x-hidden">
+    <Sidebar.Content class="bg-background">
         <NavMain items={data.navMain} />
     </Sidebar.Content>
 </Sidebar.Root>
