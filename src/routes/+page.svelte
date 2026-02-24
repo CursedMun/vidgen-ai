@@ -1,130 +1,141 @@
 <script lang="ts">
-  import { Badge } from '$lib/components/ui/badge';
-  import { Button } from '$lib/components/ui/button';
-  import * as Card from '$lib/components/ui/card';
-  import { Input } from '$lib/components/ui/input';
-  import { Label } from '$lib/components/ui/label';
-  import { createTrpcClient } from '$lib/trpc/client';
-  import { 
-    IconCheck, 
-    IconSelector, 
-    IconBrandYoutube, 
-    IconBrandInstagram,
-    IconExternalLink,
-    IconVideo,
-    IconX,
-    IconLoader2,
-    IconClock,
-    IconPlayerPlay,
-    IconDownload,
+import { Badge } from "$lib/components/ui/badge";
+import { Button } from "$lib/components/ui/button";
+import * as Card from "$lib/components/ui/card";
+import * as Command from "$lib/components/ui/command";
+import { Input } from "$lib/components/ui/input";
+import { Label } from "$lib/components/ui/label";
+import * as Popover from "$lib/components/ui/popover";
+import * as Table from "$lib/components/ui/table";
+import { createTrpcClient } from "$lib/trpc/client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
+import { cn } from "@/utils";
+import {
+  IconBrandInstagram,
+  IconBrandYoutube,
+  IconCheck,
+  IconClock,
+  IconLoader2,
+  IconPlayerPlay,
+  IconSelector,
+  IconX,
+} from "@tabler/icons-svelte";
 
-  } from '@tabler/icons-svelte';
-  import * as Command from "$lib/components/ui/command";
-  import * as Popover from "$lib/components/ui/popover";
-  import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-  import * as Table from "$lib/components/ui/table";
-  import { cn } from '@/utils';
-  
-  const trpc = createTrpcClient();
+const trpc = createTrpcClient();
 
-  let presets = $state(
-    [] as Awaited<ReturnType<typeof trpc.presets.list.query>>,
-  );
-  let savedCrons= $state<any[]>([]);
-  let allAccounts = $state<any[]>([]);
+let presets = $state([] as Awaited<ReturnType<typeof trpc.presets.list.query>>);
+let savedCrons = $state<any[]>([]);
+let allAccounts = $state<any[]>([]);
 
-  let generatedImages = $state<{ id: string; url: string; name: string; relativePath: string }[]>([]);
-  let generatedVideos = $state<{ id: string; url: string; name: string; relativePath: string }[]>([]);
-  let hoveredVideoId = $state<string | null>(null);
+let generatedImages = $state<
+	{ id: string; url: string; name: string; relativePath: string }[]
+>([]);
+let generatedVideos = $state<
+	{ id: string; url: string; name: string; relativePath: string }[]
+>([]);
 
-  let open = $state(false);
-  let selectedAccounts = $state<any[]>([]);
-  let selectedLabels = $derived(
-    selectedAccounts.map(a => a.name).join(", ") || "Selecionar contas..."
-  );
+let open = $state(false);
+let selectedAccounts = $state<any[]>([]);
+const selectedLabels = $derived(
+	selectedAccounts.map((a) => a.name).join(", ") || "Selecionar contas...",
+);
 
-  function toggleAccount(account: any) {
-    const exists = selectedAccounts.some(a => a.id === account.id);
-    if (exists) {
-      selectedAccounts = selectedAccounts.filter(a => a.id !== account.id);
-    } else {
-      const platform = account.instagramBusinessId ? 'instagram' : 'youtube';
-      
-      const accountWithPlatform = {
-        ...account,
-        displayType: platform 
-      };
-      
-      selectedAccounts = [...selectedAccounts, accountWithPlatform];
-    }
-  }
+function toggleAccount(account: any) {
+	const exists = selectedAccounts.some((a) => a.id === account.id);
+	if (exists) {
+		selectedAccounts = selectedAccounts.filter((a) => a.id !== account.id);
+	} else {
+		const platform = account.instagramBusinessId ? "instagram" : "youtube";
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-500/10 text-green-500 border-green-500/20';
-      case 'failed': return 'bg-red-500/10 text-red-500 border-red-500/20';
-      case 'processing': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-      default: return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
-    }
-  };
+		const accountWithPlatform = {
+			...account,
+			displayType: platform,
+		};
 
-  let platforms = $state({ instagram: false, youtube: false });
-  let interval = $state("6h");
-  let mediaType = $state("Video");
-  let aiModel = $state("veo");
-  let sourceUrl = $state("");
-  let presetValue = $state("");
+		selectedAccounts = [...selectedAccounts, accountWithPlatform];
+	}
+}
 
-  const load = async () => {
-    generatedVideos = await trpc.videos.list.query();
-    generatedImages = await trpc.videos.listImages.query();
-    const instaAcconts = await trpc.videos.listInstagramAccounts.query();
-    const youtubeAcconts = await trpc.videos.listYoutubeAccounts.query();
-    allAccounts = [...instaAcconts, ...youtubeAcconts]
-    presets =  await trpc.presets.list.query();
-    savedCrons = await trpc.presets.listCrons.query()
-  };
+const getStatusColor = (status: string) => {
+	switch (status) {
+		case "completed":
+			return "bg-green-500/10 text-green-500 border-green-500/20";
+		case "failed":
+			return "bg-red-500/10 text-red-500 border-red-500/20";
+		case "processing":
+			return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+		default:
+			return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
+	}
+};
 
-  $effect(() => {
-    load();
-  });
+let platforms = $state({ instagram: false, youtube: false });
+let interval = $state("6h");
+let mediaType = $state("Video");
+let aiModel = $state("veo");
+let sourceUrl = $state("");
+let presetValue = $state("");
 
-  const triggerInterval = $derived(
-    interval === "1h" ? "Cada 1 hora" : 
-    interval === "6h" ? "Cada 6 horas" : 
-    interval === "12h" ? "Cada 12 horas" : "Diário"
-  );
+const load = async () => {
+	generatedVideos = await trpc.videos.list.query();
+	generatedImages = await trpc.videos.listImages.query();
+	const instaAcconts = await trpc.videos.listInstagramAccounts.query();
+	const youtubeAcconts = await trpc.videos.listYoutubeAccounts.query();
+	allAccounts = [...instaAcconts, ...youtubeAcconts];
+	presets = await trpc.presets.list.query();
+	savedCrons = await trpc.presets.listCrons.query();
+};
 
-  async function addAutomation() {
-    console.log('presetValue: ', presetValue);
-    if (!presetValue) {
-      alert("Por favor, seleciona um preset.");
-      return;
-    }
-    console.log("AQUIII", presetValue,
-        platforms,
-        sourceUrl,
-        interval,
-        mediaType,
-        aiModel)
-    try {
-      await trpc.publication.createCron.mutate({
-        presetId: Number(presetValue),
-        selectedAccounts,
-        sourceUrl,
-        interval,
-        mediaType,
-        aiModel
-        
-      });
-      savedCrons = await trpc.presets.listCrons.query()
-      alert("Automação ativada com sucesso!");
-    } catch (e) {
-      console.error(e);
-      alert("Erro ao ativar automação.");
-    }
-  }
+$effect(() => {
+	load();
+});
 
+const triggerInterval = $derived(
+	interval === "1h"
+		? "Cada 1 hora"
+		: interval === "6h"
+			? "Cada 6 horas"
+			: interval === "12h"
+				? "Cada 12 horas"
+				: "Diário",
+);
+
+async function addAutomation() {
+	console.log("presetValue: ", presetValue);
+	if (!presetValue) {
+		alert("Por favor, seleciona um preset.");
+		return;
+	}
+	console.log(
+		"AQUIII",
+		presetValue,
+		platforms,
+		sourceUrl,
+		interval,
+		mediaType,
+		aiModel,
+	);
+	try {
+		await trpc.publication.createCron.mutate({
+			presetId: Number(presetValue),
+			selectedAccounts,
+			sourceUrl,
+			interval,
+			mediaType,
+			aiModel,
+		});
+
+		alert("Automação ativada com sucesso!");
+	} catch (e) {
+		console.error(e);
+		alert("Erro ao ativar automação.");
+	}
+}
 </script>
 
 <main class="container mx-auto flex flex-col py-8 gap-6 overflow-hidden">
