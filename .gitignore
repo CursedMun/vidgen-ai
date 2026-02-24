@@ -27,3 +27,8 @@ sqlite.db
 
 # Downloaded video files
 downloads/
+
+# Static assets
+static/audios/
+static/final_videos/
+static/images/
