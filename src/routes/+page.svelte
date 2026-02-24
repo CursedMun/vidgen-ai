@@ -1,7 +1,6 @@
 <script lang="ts">
 import { createTrpcClient } from "$lib/trpc/client";
 import { Play } from "lucide-svelte";
-
 const trpc = createTrpcClient();
 
 let generatedMedia = $state<
@@ -18,28 +17,35 @@ $effect(() => {
 	load();
 });
 
+const getRandomHeight = () => {
+  const heights = ['300px', '350px', '400px', '450px', '500px', '550px', '600px'];
+  return heights[Math.floor(Math.random() * heights.length)];
+};
+
 </script>
 
-<main class="w-full h-full overflow-hidden">
+<main class="w-full min-h-screen p-4">
   <section>
     <div>
       {#if generatedMedia.length}
-        <div class="columns-2 gap-x-2 gap-y-2 md:columns-3 lg:columns-4 xl:columns-5">
+        <div class="columns-2 gap-2 md:columns-3 lg:columns-4 xl:columns-5">
           {#each generatedMedia as media (media.url)}
+            {@const randomHeight = getRandomHeight()}
             <div 
-              class="group rounded-sm relative break-inside-avoid overflow-hidden bg-card transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 mb-2"
+              class="group relative rounded-[calc(var(--spacing)*2)] break-inside-avoid overflow-hidden bg-card transition-all duration-500 hover:shadow-2xl hover:z-10 mb-1"
+              style="height: {randomHeight};"
               onmouseenter={() => hoveredVideoId = media.url}
               onmouseleave={() => hoveredVideoId = null}
             >
               {#if media.type === "video"}
-                <div class="relative w-full">
+                <div class="relative w-full h-full">
                   <video 
                     src={media.url} 
                     autoplay 
                     muted 
                     loop 
                     playsinline
-                    class="w-full h-auto block transition-transform duration-700 group-hover:scale-110"
+                    class="w-full h-full object-cover block transition-transform duration-700 group-hover:scale-110"
                   >
                     <track kind="captions" />
                   </video>
@@ -53,7 +59,7 @@ $effect(() => {
                 <img 
                   src={media.url} 
                   alt={media.name} 
-                  class="w-full h-auto block transition-transform group-hover:scale-105" 
+                  class="w-full h-full object-cover block transition-transform group-hover:scale-105" 
                 />
               {/if}
   
