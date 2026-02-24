@@ -21,9 +21,8 @@
     IconCheck,
     IconClock,
     IconLoader2,
-    IconPlayerPlay,
     IconSelector,
-    IconX,
+    IconX
   } from "@tabler/icons-svelte";
   
   const trpc = createTrpcClient();

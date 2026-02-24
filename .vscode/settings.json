@@ -5,7 +5,7 @@
   },
   "editor.formatOnSave": true,
   "[svelte]": {
-    "editor.defaultFormatter": "Prettier-vsc.vsce-prettier"
+    "editor.defaultFormatter": "svelte.svelte-vscode"
   },
   "editor.codeActionsOnSave": {
     "source.organizeImports": "always"

@@ -7,7 +7,6 @@ Todo Vidgen-AI
 /tools - add blocks with our tools: transcription, audio generation, preview generation
 
 2. Features:
-/automation - crons creation / visualization
 /dashboard - Will have all the videos/images generated
 /automation/id - Cron detailed runs YouTube Link | Result Video | Link instragram | Link YouTube shorts
 /social/id - Videos generated for that instagram account with statistics of subscriptions 
@@ -19,6 +18,6 @@ Todo Vidgen-AI
 - Add Error message to publication_crons
 - Change interval to cron
 Ivan:
-
+/automation - crons creation / visualization - WIP
 
 Leticia:
