@@ -38,7 +38,7 @@ let generatedVideos = $state<
 	{ id: string; url: string; name: string; relativePath: string }[]
 >([]);
 
-const open = $state(false);
+let open = $state(false);
 let selectedAccounts = $state<any[]>([]);
 const selectedLabels = $derived(
 	selectedAccounts.map((a) => a.name).join(", ") || "Selecionar contas...",
@@ -73,11 +73,11 @@ const getStatusColor = (status: string) => {
 	}
 };
 
-const platforms = $state({ instagram: false, youtube: false });
-const interval = $state("6h");
-const mediaType = $state("Video");
-const aiModel = $state("veo");
-const sourceUrl = $state("");
+let platforms = $state({ instagram: false, youtube: false });
+let interval = $state("6h");
+let mediaType = $state("Video");
+let aiModel = $state("veo");
+let sourceUrl = $state("");
 let presetValue = $state("");
 
 const load = async () => {
