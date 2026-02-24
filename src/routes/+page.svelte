@@ -220,9 +220,9 @@ async function addAutomation() {
                           </div>
                     
                           {#if isInstagram}
-                            <IconBrandInstagram class="h-4 w-4 text-pink-500" />
+                            <IconBrandInstagram class="h-4 w-4 text-chart-5" />
                           {:else}
-                            <IconBrandYoutube class="h-4 w-4 text-red-500" />
+                            <IconBrandYoutube class="h-4 w-4 text-destructive" />
                           {/if}
                     
                           <span class="flex-1 truncate">{account.name}</span>
@@ -277,7 +277,7 @@ async function addAutomation() {
             </Select>
           </div>
         <div >
-        <Button variant="default" class="w-full bg-green-600 hover:bg-green-700 mt-4" onclick={() => addAutomation()}>
+        <Button variant="default" class="w-full bg-chart-4 hover:bg-chart-4/90 mt-4" onclick={() => addAutomation()}>
           Ativar
         </Button>
         </div>
@@ -291,7 +291,7 @@ async function addAutomation() {
     </div>
   
     <div class="rounded-md border bg-card">
-      <Table.Root class="text-zinc-800">
+      <Table.Root class="text-foreground">
         <Table.Header>
           <Table.Row>
             <Table.Head>Automação</Table.Head>
@@ -343,10 +343,10 @@ async function addAutomation() {
   <section class="mt-10 space-y-6">
       <div class="flex items-center justify-between px-2">
         <div>
-          <h2 class="text-2xl font-bold tracking-tight text-zinc-900">Generated Images</h2>
-          <p class="text-sm text-zinc-500">Vídeos gerados pela IA prontos para publicação.</p>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground">Generated Images</h2>
+          <p class="text-sm text-muted-foreground">Vídeos gerados pela IA prontos para publicação.</p>
         </div>
-        <Badge variant="secondary" class="bg-zinc-100 text-zinc-700 border-none px-3 py-1">
+        <Badge variant="secondary" class="bg-secondary text-secondary-foreground border-none px-3 py-1">
           {generatedImages.length} Imagens
         </Badge>
       </div>
@@ -407,10 +407,10 @@ async function addAutomation() {
   <section class="mt-10 space-y-6">
     <div class="flex items-center justify-between px-2">
       <div>
-        <h2 class="text-2xl font-bold tracking-tight text-zinc-900">Galeria de Criações</h2>
-        <p class="text-sm text-zinc-500">Vídeos gerados pela IA prontos para publicação.</p>
+        <h2 class="text-2xl font-bold tracking-tight text-foreground">Galeria de Criações</h2>
+        <p class="text-sm text-muted-foreground">Vídeos gerados pela IA prontos para publicação.</p>
       </div>
-      <Badge variant="secondary" class="bg-zinc-100 text-zinc-700 border-none px-3 py-1">
+      <Badge variant="secondary" class="bg-secondary text-secondary-foreground border-none px-3 py-1">
         {generatedVideos.length} Gerados
       </Badge>
     </div>
@@ -419,7 +419,7 @@ async function addAutomation() {
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1">
         {#each generatedVideos as video (video.url)}
           <div 
-            class="group relative aspect-[9/16] overflow-hidden rounded-2xl bg-zinc-900 shadow-lg transition-all duration-500 hover:shadow-2xl hover:-translate-y-1"
+            class="group relative aspect-[9/16] overflow-hidden rounded-2xl bg-card shadow-lg transition-all duration-500 hover:shadow-2xl hover:-translate-y-1"
             onmouseenter={() => hoveredVideoId = video.url}
             onmouseleave={() => hoveredVideoId = null}
           >
@@ -439,7 +439,7 @@ async function addAutomation() {
                 <p class="mb-3 text-sm font-medium text-white line-clamp-2">{video.name}</p>
                 
                 <div class="flex items-center gap-2">
-                  <button class="flex-1 flex items-center justify-center gap-2 rounded-lg bg-white py-2 text-xs font-bold text-black hover:bg-zinc-200 transition-colors">
+                  <button class="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground py-2 text-xs font-bold hover:bg-primary/90 transition-colors">
                     <IconPlayerPlay size={14} fill="currentColor" />
                     Automation
                   </button>
@@ -453,8 +453,8 @@ async function addAutomation() {
         {/each}
       </div>
     {:else}
-      <div class="flex h-64 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-zinc-200 bg-zinc-50/50">
-        <p class="text-sm text-zinc-400">No videos yet.</p>
+      <div class="flex h-64 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border bg-muted/50">
+        <p class="text-sm text-muted-foreground">No videos yet.</p>
       </div>
       {/if}
     </div>
