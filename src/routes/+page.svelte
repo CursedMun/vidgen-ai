@@ -27,10 +27,10 @@ $effect(() => {
   <section class="space-y-6">
     <div class="flex items-center justify-between px-2">
       <div>
-        <h2 class="text-2xl font-bold tracking-tight text-zinc-900">Gallery</h2>
-        <p class="text-sm text-zinc-500">AI-generated videos and images.</p>
+        <h2 class="text-2xl font-bold tracking-tight text-foreground">Gallery</h2>
+        <p class="text-sm text-muted-foreground">AI-generated videos and images.</p>
       </div>
-      <Badge variant="secondary" class="bg-zinc-100 text-zinc-700 border-none px-3 py-1">
+      <Badge variant="secondary" class="bg-secondary text-secondary-foreground border-none px-3 py-1">
         {generatedMedia.length} Gerados
       </Badge>
     </div>
@@ -40,7 +40,7 @@ $effect(() => {
         <div class="columns-2 gap-4 space-y-4 md:columns-3 lg:columns-4 xl:columns-5">
           {#each generatedMedia as media (media.url)}
             <div 
-              class="group relative break-inside-avoid overflow-hidden rounded-2xl bg-zinc-900 shadow-lg transition-all duration-500 hover:shadow-2xl hover:-translate-y-1"
+              class="group relative break-inside-avoid overflow-hidden rounded-2xl bg-card shadow-lg transition-all duration-500 hover:shadow-2xl hover:-translate-y-1"
               onmouseenter={() => hoveredVideoId = media.url}
               onmouseleave={() => hoveredVideoId = null}
             >
@@ -84,8 +84,8 @@ $effect(() => {
           {/each}
         </div>
       {:else}
-        <div class="flex h-64 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-zinc-200 bg-zinc-50/50">
-          <p class="text-sm text-zinc-400">No videos yet.</p>
+        <div class="flex h-64 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border bg-muted/50">
+          <p class="text-sm text-muted-foreground">No videos yet.</p>
         </div>
       {/if}
     </div>
