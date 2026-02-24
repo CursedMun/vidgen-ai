@@ -26,6 +26,34 @@ export class VideoService {
     }
   }
 
+  public async generateSocialMediaDescription(
+    mediaType: 'video' | 'image',
+    promptUsed: string,
+    scriptUsed: string,
+  ): Promise<string> {
+
+    const prompt = `
+      Generate an engaging social media caption.
+      Media type: "${mediaType}"
+      Visual prompt used during creation: "${promptUsed}"
+      Video content/script: "${scriptUsed}"
+
+      Rules:
+      1. Base the caption strictly on the context of the provided visual prompt and script.
+      2. Maintain an attractive and engaging tone.
+      3. Include relevant emojis.
+      4. Add platform-specific hashtags.
+      5. Maximum length: 100 words.
+    `;
+
+    const chatCompletion = await this.openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    return chatCompletion.choices[0]?.message?.content?.trim() || "Description not generated.";
+  }
+
   public async generateVideo(videoPrompt: string, audioPrompt: string ,transcription: string, model: 'veo' | 'chatgpt' | null): Promise<string> {
     try {
       const targetSegments = 1;
@@ -322,7 +350,7 @@ export class VideoService {
       model: "dall-e-3",
       prompt: prompt,
       n: 1,
-      size: "1024x1792", // Proporção vertical 9:16 aproximada
+      size: "1024x1792", // 9:16
       response_format: "b64_json",
     });
 

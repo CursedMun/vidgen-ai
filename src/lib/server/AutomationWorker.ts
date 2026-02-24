@@ -37,14 +37,17 @@ export class AutomationWorker {
 
         if (!preset) throw new Error("Preset não encontrado");
         let finalFilePath = "";
+        let mediaDescription = preset.description
         if (cron.mediaType === 'Video') {
           finalFilePath = await this.videoService.generateVideo(preset.videoPrompt, preset.audioPrompt, transcription, cron.aiModel);
         } else {
           finalFilePath = await this.videoService.generatePhoto(preset.imagePrompt, transcription);
         }
+        if (!mediaDescription) mediaDescription = await this.videoService.generateSocialMediaDescription(cron.mediaType.toLocaleLowerCase(), cron.mediaType === 'Video' ? preset.videoPrompt : preset.imagePrompt,  transcription)
+
 
         await this.db.update(schema.publicationCrons)
-          .set({ videoPath: finalFilePath, status: 'pending' })
+          .set({ videoPath: finalFilePath, title: mediaDescription, status: 'pending' })
           .where(eq(schema.publicationCrons.id, cron.id));
 
         const executions = await this.db.select().from(schema.cronExecutions)
@@ -58,17 +61,20 @@ export class AutomationWorker {
 
             let externalId = "";
 
+            console.log('mediaDescription: ====>', mediaDescription);
             // YouTube
             if (exe.youtubeAccountId) {
               const [acc] = await this.db.select().from(schema.youtubeAccounts).where(eq(schema.youtubeAccounts.id, exe.youtubeAccountId));
-              externalId = (await this.youtubeService.uploadShort(finalFilePath, cron.title, cron.description || "", acc.id))?.videoId as string;
+
+
+              externalId = (await this.youtubeService.uploadShort(finalFilePath, mediaDescription, cron.description || "", acc.id))?.videoId as string;
             }
             // Instagram
             else if (exe.instagramAccountId) {
               const [acc] = await this.db.select().from(schema.instagramAccounts).where(eq(schema.instagramAccounts.id, exe.instagramAccountId));
               await this.instagramService.setCurrentUser(Number(acc.id))
               console.log('finalFilePath: ', finalFilePath);
-              externalId = await this.instagramService.uploadToInstagram(finalFilePath, cron.title, cron.mediaType);
+              externalId = await this.instagramService.uploadToInstagram(finalFilePath, mediaDescription, cron.mediaType);
             }
 
             await this.db.update(schema.cronExecutions)
