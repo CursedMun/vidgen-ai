@@ -114,40 +114,23 @@ export class YoutubeService extends BaseSocialMedia {
       } else if (handleMatch || customMatch || usernameMatch) {
         const identifier =
           handleMatch?.[1] || customMatch?.[1] || usernameMatch?.[1];
+        console.log(identifier);
         channelId =
           (await this.youtubeApi.findChannelIdByName(identifier || '')) ?? '';
       } else {
         throw new Error('Invalid YouTube channel URL format');
       }
-
+      console.log({ channelId });
       if (!channelId) {
         throw new Error('Could not find channel ID');
       }
 
       // Fetch channel details using YouTube Data API
-      const youtube = google.youtube({
-        version: 'v3',
-        auth: this.ytOauth2Client,
-      });
-
-      const channelRes = await youtube.channels.list({
-        part: ['snippet', 'statistics'],
-        id: [channelId],
-      });
-
-      if (!channelRes.data.items || channelRes.data.items.length === 0) {
-        throw new Error('Channel not found');
-      }
-
-      const channel = channelRes.data.items[0];
+      const channel = await this.yt.getChannel(channelId);
 
       return {
-        channelId: channel.id,
-        channelName: channel.snippet?.title ?? 'Unknown Channel',
-        description: channel.snippet?.description ?? '',
-        thumbnailUrl: channel.snippet?.thumbnails?.default?.url ?? '',
-        subscriberCount: channel.statistics?.subscriberCount ?? '0',
-        videoCount: channel.statistics?.videoCount ?? '0',
+        channelId: channelId,
+        channelName: channel.metadata.title,
       };
     } catch (error: any) {
       console.error('Error fetching YouTube channel by link:', error);
@@ -251,10 +234,9 @@ export class YoutubeService extends BaseSocialMedia {
 
       const fileName = `yt_${videoId}_${Date.now()}.mp4`;
       const filePath = path.join(downloadsDir, fileName);
-
+      console.log(videoId);
       const stream = await this.yt.download(videoId, {
-        type: 'video',
-        quality: '720p',
+        type: 'video+audio',
       });
 
       const file = fs.createWriteStream(filePath);

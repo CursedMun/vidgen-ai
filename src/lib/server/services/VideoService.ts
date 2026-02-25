@@ -31,13 +31,11 @@ export class VideoService {
   public async generateSocialMediaDescription(
     mediaType: 'video' | 'image',
     promptUsed: string,
-    scriptUsed: string,
   ): Promise<string> {
     const prompt = `
       Generate an engaging social media caption.
       Media type: "${mediaType}"
       Visual prompt used during creation: "${promptUsed}"
-      Video content/script: "${scriptUsed}"
 
       Rules:
       1. Base the caption strictly on the context of the provided visual prompt and script.
@@ -60,42 +58,44 @@ export class VideoService {
 
   public async generateVideo(
     videoPrompt: string,
-    audioPrompt: string,
-    transcription: string,
-    model: 'veo' | 'chatgpt' | null,
-    inputVideoPath?: string,
+    model: 'veo' | 'chatgpt' = 'chatgpt',
+    audioPrompt?: string,
+    textReference?: string,
+    videoPathReference?: string,
   ): Promise<string> {
     try {
-      const targetSegments = 1;
-
-      const prompt = await this.generateVideoPrompt(videoPrompt, transcription);
-      const musicPrompt = await this.generateSpeechScriptFromTranscript(
+      const prompt = await this.generateVideoPrompt(
+        videoPrompt,
+        textReference,
         audioPrompt,
-        transcription,
-        targetSegments,
       );
+      // const musicPrompt = await this.generateSpeechScriptFromTranscript(
+      //   audioPrompt,
+      //   transcription,
+      //   targetSegments,
+      // );
 
-      let audioPath = '';
-      const audioUrl = await this.musicApi.generateMusic(musicPrompt);
-      if (audioUrl) {
-        const fileName = `sportiz-${Date.now()}`;
-        audioPath = await this.musicApi.saveAudioLocally(audioUrl, fileName);
-        audioPath = path.resolve('static', audioPath.replace(/^\//, ''));
-      }
+      // let audioPath = '';
+      // const audioUrl = await this.musicApi.generateMusic(musicPrompt);
+      // if (audioUrl) {
+      //   const fileName = `sportiz-${Date.now()}`;
+      //   audioPath = await this.musicApi.saveAudioLocally(audioUrl, fileName);
+      //   audioPath = path.resolve('static', audioPath.replace(/^\//, ''));
+      // }
       let videoPath = [];
       if (!model || model === 'chatgpt') {
-        const video = await this.generateSoraVideo(prompt, inputVideoPath);
+        const video = await this.generateSoraVideo(prompt, videoPathReference);
         videoPath = [video];
       } else {
-        videoPath = await this.generateLongVideo(prompt, inputVideoPath);
+        videoPath = await this.generateLongVideo(prompt, videoPathReference);
       }
-      if (!audioUrl) return videoPath[0];
-      const finalVideoPath = await this.mergeAudioAndVideo(
-        videoPath,
-        audioPath,
-      );
+      // if (!audioUrl) return videoPath[0];
+      // const finalVideoPath = await this.mergeAudioAndVideo(
+      //   videoPath,
+      //   audioPath,
+      // );
 
-      return finalVideoPath;
+      return videoPath[0];
     } catch (error) {
       console.error('ERROR GEMINI/VEO:', (error as Error).message);
       throw error;
@@ -104,7 +104,8 @@ export class VideoService {
 
   private async generateVideoPrompt(
     videoPrompt: string,
-    transcription: string,
+    textReference?: string,
+    audioPrompt?: string,
   ) {
     const prompt = `
     ${videoPrompt}
@@ -132,9 +133,14 @@ export class VideoService {
     - NO FAMOUS NAMES: If the transcription mentions celebrities, politicians, or public figures, replace them with generic, high-quality descriptions (e.g., "a charismatic tech leader" instead of "Elon Musk", or "a legendary football player" instead of "Cristiano Ronaldo").
     - Ensure the visual description is rich enough to guide the AI without using real-world identities.
 
-    Transcription:
+    Reference:
     """
-    ${transcription}
+    ${textReference}
+    """
+
+    Audio:
+    """
+    ${audioPrompt ?? 'Copy from reference video'}
     """
     `;
 

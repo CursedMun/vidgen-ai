@@ -1,11 +1,18 @@
-import type { Workflow } from '@prisma/client';
+import type { Preset, Prompt, Source, Workflow } from '@prisma/client';
 import type { TDatabase } from '../infrastructure/db/client';
 import type { RssService } from './RssService';
 import type { InstagramService } from './social_media/InstagramService';
 import type { YoutubeService } from './social_media/YoutubeService';
 import type { TranscriberService } from './TranscriberService';
 import type { VideoService } from './VideoService';
-
+type WorkflowExtended = Workflow & {
+  preset: Preset & {
+    imagePrompt?: Prompt | null;
+    audioPrompt?: Prompt | null;
+    videoPrompt?: Prompt | null;
+  };
+  source: Source;
+};
 export class WorkflowService {
   constructor(
     private db: TDatabase,
@@ -80,81 +87,31 @@ export class WorkflowService {
 
         console.log(`🚀 Processing Workflow: ${workflow.title}`);
 
-        let sourceContent = '';
-        let inputVideoPath: string | undefined = undefined;
-
-        if (workflow.source.type === 'rss') {
-          // Fetch and parse RSS feed to get latest description
-          const rssContent = await this.rssService.fetchLatestRSSContent(
-            workflow.source.url,
-          );
-          sourceContent = rssContent.description;
-        } else if (workflow.source.type === 'youtube') {
-          // Get the latest YouTube short URL from the channel
-          const channel = await this.youtubeService.getYoutubeAccountByLink(
-            workflow.source.url,
-          );
-          const videoPath =
-            await this.youtubeService.downloadLatestChannelShortVideo(channel);
-          if (videoPath) {
-            inputVideoPath = videoPath;
-            // Use video as reference, still need transcription for prompts
-            const videoId = videoPath.match(/yt_([^_]+)_/)?.[1];
-            sourceContent = `https://www.youtube.com/shorts/${videoId}`;
-          }
-        } else {
-          // Direct URL provided
-          sourceContent = workflow.source.url;
-        }
+        const reference = await this.getReferenceFromSource(workflow.source);
 
         if (!workflow.preset) {
           throw new Error('Preset not found');
         }
 
-        let finalFilePath = '';
-        let mediaDescription = workflow.preset.description;
+        const media = await this.generateMedia(workflow, reference);
 
-        if (workflow.mediaType === 'video') {
-          const transcription = await this.transcriberService.transcribeVideo(
-            sourceContent.trim(),
-          );
-          console.log('Transcription completed ====>', transcription);
-
-          finalFilePath = await this.videoService.generateVideo(
-            workflow.preset.videoPrompt?.content!,
-            workflow.preset.audioPrompt?.content!,
-            transcription,
-            workflow.model,
-            inputVideoPath,
-          );
-        } else {
-          const transcription = await this.transcriberService.transcribeVideo(
-            sourceContent.trim(),
-          );
-          console.log('Transcription completed ====>', transcription);
-          finalFilePath = await this.videoService.generatePhoto(
-            workflow.preset.imagePrompt?.content!,
-            transcription,
-          );
+        if (!media) {
+          throw new Error("Media didn't generate");
         }
 
-        if (!mediaDescription) {
-          mediaDescription =
-            await this.videoService.generateSocialMediaDescription(
-              workflow.mediaType.toLowerCase() as 'video' | 'image',
-              workflow.mediaType === 'video'
-                ? workflow.preset.videoPrompt?.content!
-                : workflow.preset.imagePrompt?.content!,
-              //TODO fix this
-              'test',
-            );
-        }
+        const videoDescription =
+          await this.videoService.generateSocialMediaDescription(
+            workflow.mediaType.toLowerCase() as 'video' | 'image',
+            workflow.mediaType === 'video'
+              ? workflow.preset.videoPrompt?.content!
+              : workflow.preset.imagePrompt?.content!,
+          );
 
         await this.db.workflowRun.update({
           where: { id: workflowRun.id },
           data: {
-            filePath: finalFilePath,
-            title: mediaDescription,
+            filePath: media,
+            title: videoDescription,
           },
         });
 
@@ -170,7 +127,7 @@ export class WorkflowService {
           try {
             let externalId = '';
 
-            console.log('mediaDescription: ====>', mediaDescription);
+            console.log('videoDescription: ====>', videoDescription);
 
             if (!account) {
               throw new Error('Account not found');
@@ -179,8 +136,8 @@ export class WorkflowService {
             // YouTube
             if (account.platform === 'youtube') {
               const result = await this.youtubeService.uploadShort(
-                finalFilePath,
-                mediaDescription,
+                media,
+                videoDescription,
                 workflow.preset.description || '',
                 account,
               );
@@ -189,10 +146,10 @@ export class WorkflowService {
             // Instagram
             else if (account.platform === 'instagram') {
               await this.instagramService.setCurrentUser(account.id);
-              console.log('finalFilePath: ', finalFilePath);
+              console.log('media: ', media);
               externalId = await this.instagramService.uploadToInstagram(
-                finalFilePath,
-                mediaDescription,
+                media,
+                videoDescription,
                 workflow.mediaType,
               );
             }
@@ -234,6 +191,63 @@ export class WorkflowService {
         });
       }
     }
+  }
+
+  private async generateMedia(
+    workflow: WorkflowExtended,
+    reference:
+      | {
+          text: string;
+          videoPath: undefined;
+        }
+      | {
+          text: undefined;
+          videoPath: string | undefined;
+        },
+  ) {
+    if (workflow.mediaType === 'image') {
+      if (workflow.source.type === 'youtube') {
+        throw new Error("Can't generate a image from YouTube video");
+      }
+      if (!workflow.preset.imagePrompt) {
+        throw new Error('Image prompt not found');
+      }
+      if (!reference.text) {
+        throw new Error('Reference text not found');
+      }
+      return await this.videoService.generatePhoto(
+        workflow.preset.imagePrompt.content,
+        reference.text,
+      );
+    }
+    if (!workflow.preset.videoPrompt?.content) {
+      throw new Error('Video prompt not found');
+    }
+
+    await this.videoService.generateVideo(
+      workflow.preset.videoPrompt?.content,
+      workflow.model,
+      workflow.preset.audioPrompt?.content!,
+      reference.text,
+      reference.videoPath,
+    );
+  }
+
+  private async getReferenceFromSource(source: Source) {
+    if (source.type === 'rss') {
+      const rssContent = await this.rssService.fetchLatestRSSContent(
+        source.url,
+      );
+
+      return { text: rssContent.description, videoPath: undefined };
+    }
+    //TODO make source.type === "transcription"
+    const channel = await this.youtubeService.getYoutubeAccountByLink(
+      source.url,
+    );
+    const videoPath =
+      await this.youtubeService.downloadLatestChannelShortVideo(channel);
+    return { text: undefined, videoPath };
   }
 
   private calculateNextRun(frequency: string): Date | null {

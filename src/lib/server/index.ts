@@ -61,7 +61,6 @@ export async function configureApp(event: RequestEvent) {
   );
 
   const youtubeApi = new YoutubeApi(YOUTUBE_API_KEY);
-
   const topMediaApi = new TopMediAiApi(TOPMEDIAI_API_KEY);
 
   const tiktokApi = new TiktokApi(
