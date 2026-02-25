@@ -344,7 +344,7 @@
                           src={file.data}
                           class="w-full h-full object-cover"
                           muted
-                        />
+                        ></video>
                       {/if}
                       <Button
                         variant="destructive"
@@ -660,7 +660,7 @@
                         src={file.data}
                         class="w-full h-full object-cover"
                         muted
-                      />
+                      ></video>
                     {/if}
                     <Button
                       variant="destructive"
