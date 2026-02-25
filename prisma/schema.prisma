@@ -1,0 +1,178 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+enum Platform {
+    instagram
+    youtube
+}
+
+enum MediaType {
+    video
+    image
+}
+
+enum Model {
+    veo
+    chatgpt
+}
+
+enum WorkflowStatus {
+    processing
+    active
+    deactivated
+}
+
+model Transcription {
+    id           Int       @id @default(autoincrement())
+    channelId    Int?      @map("channel_id")
+    videoId      String?   @map("video_id")
+    videoUrl     String    @map("video_url")
+    thumbnailUrl String?   @map("thumbnail_url")
+    status       String    @default("completed")
+    errorMessage String?   @map("error_message")
+    transcript   String?
+    createdAt    DateTime  @default(now()) @map("created_at")
+    updatedAt    DateTime  @updatedAt @map("updated_at")
+    startedAt    DateTime? @map("started_at")
+    completedAt  DateTime? @map("completed_at")
+
+    @@map("transcriptions")
+}
+
+model Account {
+    id           Int           @id @default(autoincrement())
+    name         String
+    platform     Platform
+    jsonData     String        @map("json_data")
+    createdAt    DateTime      @default(now()) @map("created_at")
+    updatedAt    DateTime      @updatedAt @map("updated_at")
+    workflows    Workflow[]
+    workflowJobs WorkflowJob[]
+
+    @@map("accounts")
+}
+
+model Asset {
+    id        Int      @id @default(autoincrement())
+    url       String
+    type      String
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+    prompts   Prompt[]
+    presets   Preset[]
+
+    @@map("assets")
+}
+
+enum PromptType {
+    video
+    image
+    audio
+}
+
+model Prompt {
+    id           Int        @id @default(autoincrement())
+    title        String
+    content      String
+    type         PromptType
+    createdAt    DateTime   @default(now()) @map("created_at")
+    updatedAt    DateTime   @updatedAt @map("updated_at")
+    assets       Asset[]
+    videoPresets Preset[]   @relation("video_prompts")
+    audioPresets Preset[]   @relation("audio_prompts")
+    imagePresets Preset[]   @relation("image_prompts")
+
+    @@map("prompts")
+}
+
+model Preset {
+    id            Int        @id @default(autoincrement())
+    name          String
+    description   String?
+    videoPromptId Int?       @map("video_prompt_id")
+    videoPrompt   Prompt?    @relation("video_prompts", fields: [videoPromptId], references: [id])
+    audioPromptId Int?       @map("audio_prompt_id")
+    audioPrompt   Prompt?    @relation("audio_prompts", fields: [audioPromptId], references: [id])
+    imagePromptId Int?       @map("image_prompt_id")
+    imagePrompt   Prompt?    @relation("image_prompts", fields: [imagePromptId], references: [id])
+    createdAt     DateTime   @default(now()) @map("created_at")
+    updatedAt     DateTime   @updatedAt @map("updated_at")
+    workflows     Workflow[]
+    assets        Asset[]
+
+    @@map("presets")
+}
+
+enum SourceType {
+    youtube
+    rss
+}
+
+model Source {
+    id        Int        @id @default(autoincrement())
+    name      String
+    url       String
+    type      SourceType
+    createdAt DateTime   @default(now()) @map("created_at")
+    updatedAt DateTime   @updatedAt @map("updated_at")
+    workflows Workflow[]
+
+    @@map("sources")
+}
+
+model Workflow {
+    id           Int            @id @default(autoincrement())
+    title        String
+    description  String?
+    //example 1h, 6h, 10m, 1w, 1m
+    interval     String
+    mediaType    MediaType      @default(video) @map("media_type")
+    model        Model          @default(chatgpt)
+    status       WorkflowStatus @default(active)
+    createdAt    DateTime       @default(now()) @map("created_at")
+    updatedAt    DateTime       @updatedAt @map("updated_at")
+    sourceId     Int            @map("source_id")
+    lastRunAt    DateTime?      @map("last_run_at")
+    nextRunAt    DateTime?      @map("next_run_at")
+    source       Source         @relation(fields: [sourceId], references: [id])
+    presetId     Int            @map("preset_id")
+    preset       Preset         @relation(fields: [presetId], references: [id])
+    accounts     Account[]
+    workflowRuns WorkflowRun[]
+
+    @@map("workflows")
+}
+
+model WorkflowRun {
+    id           Int            @id @default(autoincrement())
+    workflowId   Int            @map("workflow_id")
+    title        String
+    filePath     String
+    startedAt    DateTime       @default(now()) @map("started_at")
+    completedAt  DateTime?      @map("completed_at")
+    status       WorkflowStatus @default(active)
+    workflow     Workflow       @relation(fields: [workflowId], references: [id])
+    workflowJobs WorkflowJob[]
+
+    @@map("workflow_runs")
+}
+
+model WorkflowJob {
+    id            Int         @id @default(autoincrement())
+    workflowRunId Int         @map("workflow_run_id")
+    accountId     Int?        @map("account_id")
+    externalId    String?     @map("external_id")
+    errorMessage  String?     @map("error_message")
+    executedAt    DateTime?   @map("executed_at")
+    createdAt     DateTime    @default(now()) @map("created_at")
+    updatedAt     DateTime    @updatedAt @map("updated_at")
+    workflowRun   WorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+    account       Account?    @relation(fields: [accountId], references: [id])
+
+    @@map("workflow_jobs")
+}

@@ -32,6 +32,7 @@ const getRandomHeight = () => {
           {#each generatedMedia as media (media.url)}
             {@const randomHeight = getRandomHeight()}
             <div 
+              role="group"
               class="group relative rounded-[calc(var(--spacing)*2)] break-inside-avoid overflow-hidden bg-card transition-all duration-500 hover:shadow-2xl hover:z-10 mb-1"
               style="height: {randomHeight};"
               onmouseenter={() => hoveredVideoId = media.url}

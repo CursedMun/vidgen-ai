@@ -1,158 +1,225 @@
 <script lang="ts">
-    import ChannelsJobs from '$lib/components/channels-jobs.svelte';
     import { Button } from '$lib/components/ui/button';
-    import * as Card from '$lib/components/ui/card';
+    import * as Dialog from '$lib/components/ui/dialog';
+    import { Input } from '$lib/components/ui/input';
+    import { Label } from '$lib/components/ui/label';
     import { createTrpcClient } from '$lib/trpc/client';
-  import { Badge } from '@/components/ui/badge';
-    import { IconBrandInstagram, IconBrandYoutube, IconPlus, IconCircleCheck } from "@tabler/icons-svelte";
+    import { IconBrandInstagram, IconBrandYoutube } from "@tabler/icons-svelte";
+    import { Plus } from 'lucide-svelte';
+    import { onMount } from 'svelte';
+    import { toast } from 'svelte-sonner';
+
     const trpc = createTrpcClient();
   
-    let channels = $state(
-      [] as Awaited<ReturnType<typeof trpc.channels.list.query>>,
-    );
-  
-    let selectedPlatform = $state<'instagram' | 'youtube' | 'x' | 'tiktok' | null>(null);
-    let selectedAccountId = $state<number | null>(null);
     let accounts = $state<{ id: number; name: string; expiresAt: string; updatedAt: string | null; instagramBusinessId: string; accessToken: string; }[]>([]);
     let accountsYoutube = $state<{ id: number; name: string; accessToken: string | null; refreshToken: string; expiryDate: number | null; clientId: string | null; }[]>([]);
     let newToken = $state("");
     let accountAlias = $state("");
-  
+    let isInstagramDialogOpen = $state(false);
+    let isAddingAccount = $state(false);
 
-    
     async function handleAddYoutube() {
       const authUrlQuery = await trpc.youtube.getAuthUrl.query();
-      console.log('authUrlQuery: ', authUrlQuery);
       if (authUrlQuery) {
-        // open login Google
         window.location.href = authUrlQuery;
       }
     }
 
     async function addAccount() {
-      await trpc.videos.addInstagramAccount.mutate({ 
-        shortLivedToken: newToken, 
-        name: accountAlias 
-      });
-      newToken = ""; accountAlias = "";
-      accounts = await trpc.videos.listInstagramAccounts.query();
-    }
-  
-    const load = async () => {
-      channels = await trpc.channels.list.query();
-      accounts = await trpc.videos.listInstagramAccounts.query();
-      accountsYoutube = await trpc.videos.listYoutubeAccounts.query();
-    };
-  
-    $effect(() => {
-      load();
-    });
-    async function connectTwitter() {
-      selectedPlatform = 'x'; 
-      selectedAccountId = null;
-      const { redirectUrl } = await trpc.videos.authorizeX.query();
-      if (redirectUrl) {
-        window.open(redirectUrl.url, '_blank', 'noopener,noreferrer');
+      if (!newToken || !accountAlias) {
+        toast.error('Please enter both account name and token');
+        return;
+      }
+
+      isAddingAccount = true;
+      try {
+        await trpc.videos.addInstagramAccount.mutate({ 
+          shortLivedToken: newToken, 
+          name: accountAlias 
+        });
+        newToken = "";
+        accountAlias = "";
+        isInstagramDialogOpen = false;
+        await loadAccounts();
+        toast.success('Instagram account added successfully!');
+      } catch (error) {
+        console.error('Error adding account:', error);
+        toast.error('Failed to add Instagram account');
+      } finally {
+        isAddingAccount = false;
       }
     }
+  
+    async function loadAccounts() {
+      accounts = await trpc.videos.listInstagramAccounts.query();
+      accountsYoutube = await trpc.videos.listYoutubeAccounts.query();
+    }
+  
+    onMount(() => {
+      loadAccounts();
+    });
   </script>
   
-  <main class="container mx-auto flex flex-col py-8 gap-6 overflow-hidden">
-    <!-- Channels and Jobs Management -->
-    <ChannelsJobs channels={channels || []} />
-  
-    <section class="w-full flex gap-6 mb-6 border border-none">  
-      <div class="flex-1 min-w-[380px]">
-        <Card.Root class="h-full shadow-sm">
-          <div class="p-6">
-            <div class="mb-4">
-              <h3 class="text-lg font-bold text-gray-800">Novo Perfil Instagram</h3>
-              <p class="text-xs text-muted-foreground">Vincule uma nova conta do Instagram</p>
-            </div>
-            
-            <div class="grid gap-4">
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-bold uppercase text-gray-400 ml-1">Identificação</label>
-                <input bind:value={accountAlias} placeholder="Nome do Perfil" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
-              </div>
-              
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-bold uppercase text-gray-400 ml-1">Meta Token</label>
-                <input bind:value={newToken} placeholder="Short-Lived Token" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
-              </div>
-  
-              <Button class="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-5" onclick={addAccount}>
-                Vincular Conta
-              </Button>
-            </div>
-          </div>
-        </Card.Root>
+  <main class="container mx-auto flex flex-col py-8 gap-6">
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-foreground">Social Media Accounts</h1>
+        <p class="text-muted-foreground text-sm">
+          Manage your connected social media accounts.
+        </p>
       </div>
-  </section>
 
-  <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <Card.Root >
-      <Card.Header class="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div class="space-y-1">
-          <Card.Title class="text-xl flex items-center gap-2">
+      <Button 
+        class="gap-2"
+        onclick={() => isInstagramDialogOpen = true}
+      >
+        <Plus class="h-4 w-4" />
+        Add Instagram Account
+      </Button>
+    </header>
+
+    <!-- Instagram Dialog -->
+    <Dialog.Root bind:open={isInstagramDialogOpen}>
+      <Dialog.Content>
+        <Dialog.Header>
+          <Dialog.Title>Add Instagram Account</Dialog.Title>
+          <Dialog.Description>
+            Connect a new Instagram business account using a Meta access token.
+          </Dialog.Description>
+        </Dialog.Header>
+
+        <div class="space-y-4 py-4">
+          <div class="space-y-2">
+            <Label for="account-name">Account Name</Label>
+            <Input
+              id="account-name"
+              bind:value={accountAlias}
+              placeholder="e.g., My Business Account"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <Label for="access-token">Meta Access Token</Label>
+            <Input
+              id="access-token"
+              bind:value={newToken}
+              placeholder="Short-Lived Token"
+              type="password"
+            />
+          </div>
+        </div>
+
+        <Dialog.Footer>
+          <Button
+            variant="outline"
+            onclick={() => {
+              isInstagramDialogOpen = false;
+              newToken = '';
+              accountAlias = '';
+            }}
+            disabled={isAddingAccount}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onclick={addAccount} 
+            disabled={isAddingAccount || !newToken || !accountAlias}
+          >
+            {isAddingAccount ? 'Adding...' : 'Add Account'}
+          </Button>
+        </Dialog.Footer>
+      </Dialog.Content>
+    </Dialog.Root>
+
+    <div class="space-y-6">
+      <!-- Instagram Accounts Section -->
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
             <IconBrandInstagram size={24} class="text-pink-500" />
-            Contas Instagram
-          </Card.Title>
+            <h2 class="text-lg font-semibold">Instagram Accounts</h2>
+          </div>
         </div>
-      </Card.Header>
-      
-      <Card.Content class="flex-1 overflow-y-auto custom-scrollbar">
-        <div class="space-y-3">
-          <div class="flex items-center justify-between p-4 rounded-xl border transition-colors">
-            <div class="flex items-center gap-3">
-              {#each accounts as acc}
-                <div>
-                  <p class="text-sm font-semibold">{acc.name} - {acc.instagramBusinessId}</p>
+
+        {#if accounts.length > 0}
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {#each accounts as account}
+              <div class="group cursor-pointer">
+                <div class="relative rounded-lg overflow-hidden border transition-all hover:border-primary">
+                  <div class="p-4">
+                    <div class="flex items-center gap-3 mb-2">
+                      <div class="h-10 w-10 rounded-full bg-pink-500/10 flex items-center justify-center text-pink-500 border border-pink-500/20">
+                        <IconBrandInstagram size={20} />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-sm truncate">{account.name}</p>
+                        <p class="text-xs text-muted-foreground truncate">ID: {account.instagramBusinessId}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              {/each}
-            </div>
+              </div>
+            {/each}
           </div>
-          {#if !accounts}
-          <div class="flex flex-col items-center justify-center h-32 border-2 border-dashed border-zinc-800 rounded-xl opacity-40">
-             <IconBrandInstagram size={32} class="mb-2" />
-             <p class="text-xs">Nenhuma conta vinculada</p>
+        {:else}
+          <div class="rounded-lg border border-dashed p-12 text-center">
+            <IconBrandInstagram class="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p class="text-sm text-muted-foreground mb-4">
+              No Instagram accounts connected yet.
+            </p>
+            <Button onclick={() => isInstagramDialogOpen = true} class="gap-2">
+              <Plus class="h-4 w-4" />
+              Add Instagram Account
+            </Button>
           </div>
-          {/if}
-        </div>
-      </Card.Content>
-    </Card.Root>
-  
-    <Card.Root >
-      <Card.Header class="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div class="space-y-1">
-          <Card.Title class="text-xl flex items-center gap-2">
+        {/if}
+      </div>
+
+      <!-- YouTube Accounts Section -->
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
             <IconBrandYoutube size={24} class="text-red-500" />
-            Canais YouTube
-          </Card.Title>
-        </div>
-        <Button onclick={handleAddYoutube} variant="outline" size="sm" class="h-8 gap-1">
-          <IconPlus size={16} /> Conectar Canal
-        </Button>
-      </Card.Header>
-      
-      <Card.Content class="flex-1 overflow-y-auto custom-scrollbar gap-2">
-        {#each accountsYoutube as acc}
-        <div class="space-y-3 mb-2">
-          <div class="flex items-center justify-between p-4 rounded-xl border transition-colors">
-            <div class="flex items-center gap-3">
-              <div class="h-12 w-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20">
-                <IconBrandYoutube size={24} />
-              </div>
-              <div>
-                <p class="text-sm font-semibold">{acc.name}</p>
-              </div>
-            </div>
+            <h2 class="text-lg font-semibold">YouTube Channels</h2>
           </div>
+          <Button onclick={handleAddYoutube} variant="outline" size="sm" class="gap-2">
+            <Plus class="h-4 w-4" />
+            Connect Channel
+          </Button>
         </div>
-        {/each}
-      </Card.Content>
-    </Card.Root>
-  
-  </section>
+
+        {#if accountsYoutube.length > 0}
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {#each accountsYoutube as account}
+              <div class="group cursor-pointer">
+                <div class="relative rounded-lg overflow-hidden border transition-all hover:border-primary">
+                  <div class="p-4">
+                    <div class="flex items-center gap-3">
+                      <div class="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20">
+                        <IconBrandYoutube size={20} />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-sm truncate">{account.name}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <div class="rounded-lg border border-dashed p-12 text-center">
+            <IconBrandYoutube class="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p class="text-sm text-muted-foreground mb-4">
+              No YouTube channels connected yet.
+            </p>
+            <Button onclick={handleAddYoutube} variant="outline" class="gap-2">
+              <Plus class="h-4 w-4" />
+              Connect Channel
+            </Button>
+          </div>
+        {/if}
+      </div>
+    </div>
   </main>
   

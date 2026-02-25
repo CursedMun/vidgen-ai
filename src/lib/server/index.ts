@@ -10,7 +10,7 @@ import {
   YOUTUBE_API_KEY,
   YT_CLIENT_ID,
   YT_CLIENT_SECRET,
-  YT_REDIRECT_URI
+  YT_REDIRECT_URI,
 } from '$env/static/private';
 import { GoogleGenAI } from '@google/genai';
 import type { Cookies, RequestEvent } from '@sveltejs/kit';
@@ -27,37 +27,28 @@ import { configureServices } from './services';
 export type TApplication = {
   services: Awaited<ReturnType<typeof configureServices>>;
   db: TDatabase;
-  cookies: Cookies
+  cookies: Cookies;
 };
 
 let rawApp: TApplication | undefined;
+Platform.shim.eval = async (
+  data: Types.BuildScriptResult,
+  env: Record<string, Types.VMPrimative>,
+) => {
+  const properties = [];
 
-let appInstance: { services: ReturnType<typeof configureServices>; db: TDatabase } | undefined;
+  if (env.n) {
+    properties.push(`n: exportedVars.nFunction("${env.n}")`);
+  }
 
-export async function initCore() {
-  if (appInstance) return appInstance;
+  if (env.sig) {
+    properties.push(`sig: exportedVars.sigFunction("${env.sig}")`);
+  }
 
-  const yt = await Innertube.create({ cache: new UniversalCache(true) });
-  const ytOauth2Client = new google.auth.OAuth2(YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REDIRECT_URI);
-  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-  const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-  const youtubeApi = new YoutubeApi(YOUTUBE_API_KEY);
-  const topMediaApi = new TopMediAiApi(TOPMEDIAI_API_KEY);
-  const tiktokApi = new TiktokApi(TIKTOK_API_KEY, TIKTOK_ClIENT_SECRET, TIKTOK_REDIRECT);
-  const instagramApi = new InstagramApi();
-  const twitterApi = new TwitterApi({ appKey: X_APP_KEY, appSecret: X_APP_SECRET });
+  const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
 
-  appInstance = {
-    services: configureServices(
-      db, ai, openai, yt, ytOauth2Client,
-      youtubeApi, topMediaApi, tiktokApi, instagramApi, twitterApi
-    ),
-    db: db
-  };
-
-  return appInstance;
-}
-
+  return new Function(code)();
+};
 export async function configureApp(event: RequestEvent) {
   if (rawApp) {
     return rawApp;
@@ -66,30 +57,10 @@ export async function configureApp(event: RequestEvent) {
   const ytOauth2Client = new google.auth.OAuth2(
     YT_CLIENT_ID,
     YT_CLIENT_SECRET,
-    YT_REDIRECT_URI
+    YT_REDIRECT_URI,
   );
 
-  Platform.shim.eval = async (
-    data: Types.BuildScriptResult,
-    env: Record<string, Types.VMPrimative>,
-  ) => {
-    const properties = [];
-
-    if (env.n) {
-      properties.push(`n: exportedVars.nFunction("${env.n}")`);
-    }
-
-    if (env.sig) {
-      properties.push(`sig: exportedVars.sigFunction("${env.sig}")`);
-    }
-
-    const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
-
-    return new Function(code)();
-  };
-  const youtubeApi = new YoutubeApi(
-    YOUTUBE_API_KEY,
-  );
+  const youtubeApi = new YoutubeApi(YOUTUBE_API_KEY);
 
   const topMediaApi = new TopMediAiApi(TOPMEDIAI_API_KEY);
 
@@ -101,38 +72,38 @@ export async function configureApp(event: RequestEvent) {
 
   const instagramApi = new InstagramApi();
 
-
   const twitterApi = new TwitterApi({
     appKey: X_APP_KEY,
-    appSecret: X_APP_SECRET
+    appSecret: X_APP_SECRET,
   });
 
   const ai = new GoogleGenAI({
-    apiKey: GEMINI_API_KEY
+    apiKey: GEMINI_API_KEY,
   });
 
   const openai = new OpenAI({
-    apiKey: OPENAI_API_KEY
+    apiKey: OPENAI_API_KEY,
   });
 
-
+  const services = configureServices(
+    db,
+    ai,
+    openai,
+    yt,
+    ytOauth2Client,
+    youtubeApi,
+    topMediaApi,
+    tiktokApi,
+    instagramApi,
+    twitterApi,
+  );
 
   rawApp = {
-    services: configureServices(
-      db,
-      ai,
-      openai,
-      yt,
-      ytOauth2Client,
-      youtubeApi,
-      topMediaApi,
-      tiktokApi,
-      instagramApi,
-      twitterApi,
-    ),
+    services,
     db: db,
-    cookies: event.cookies
+    cookies: event.cookies,
   };
+
   return rawApp;
 }
 

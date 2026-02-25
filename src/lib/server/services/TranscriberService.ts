@@ -1,15 +1,14 @@
 import * as fs from 'fs';
 import type { OpenAI } from 'openai';
 import Parser from 'rss-parser';
-import { schema, type TDatabase } from '../infrastructure/db/client';
-import type { YoutubeService } from './YoutubeService';
+import { type TDatabase } from '../infrastructure/db/client';
+import type { YoutubeService } from './social_media/YoutubeService';
 export class TranscriberService {
   constructor(
     private db: TDatabase,
     private openai: OpenAI,
     private youtubeService: YoutubeService,
   ) {}
-
 
   private rssParser = new Parser();
 
@@ -23,7 +22,9 @@ export class TranscriberService {
       console.log('firstItem: ', firstItem);
 
       if (!firstItem || !firstItem.contentSnippet) {
-         return firstItem?.content || firstItem?.title || "Sem conteúdo disponível";
+        return (
+          firstItem?.content || firstItem?.title || 'Sem conteúdo disponível'
+        );
       }
 
       return firstItem.contentSnippet; // O parser já limpa tags HTML aqui
@@ -35,27 +36,30 @@ export class TranscriberService {
 
   public async transcribeVideo(videoUrl: string): Promise<string> {
     let localFilePath: string | null = null;
-    const isYouTube = videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be');
+    const isYouTube =
+      videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be');
     console.log('isYouTube: ', isYouTube);
     try {
       if (isYouTube) {
         localFilePath = await this.youtubeService.downloadAudio(videoUrl);
         const transcription = await this.transcribeAudio(localFilePath);
         const channelId = await this.youtubeService.getChannelId(videoUrl);
-        const channel = await this.db.query.channels.findFirst({
-          where: (c, { eq }) => eq(c.channel_id, channelId)
+        const channel = await this.db.account.findFirst({
+          where: { jsonData: { path: ['channelId'], equals: channelId } },
         });
-        await this.db.insert(schema.transcriptions).values({
-          video_url: videoUrl,
-          channel_id: channel?.id,
-          transcript: transcription,
-          createdAt: new Date(),
+        await this.db.transcription.create({
+          data: {
+            videoUrl: videoUrl,
+            channelId: channel?.id,
+            transcript: transcription,
+            createdAt: new Date(),
+          },
         });
         return transcription;
       } else {
-        const transcription = await this.getSourceContent(videoUrl)
+        const transcription = await this.getSourceContent(videoUrl);
         console.log('transcription: getSourceContent ', transcription);
-        return transcription
+        return transcription;
       }
     } catch (error) {
       console.error(
@@ -92,7 +96,7 @@ export class TranscriberService {
   private async transcribeAudio(localFilePath: string): Promise<string> {
     const transcription = await this.openai.audio.transcriptions.create({
       file: fs.createReadStream(localFilePath),
-      model: "whisper-1",
+      model: 'whisper-1',
     });
 
     return transcription.text;

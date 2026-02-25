@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-	import { BarChart3, HelpCircle, Instagram, Layers, Search, Settings, Wrench, Zap } from "lucide-svelte";
+	import { BarChart3, HelpCircle, Instagram, Layers, Link2, MessageSquare, Search, Settings, Wrench, Zap } from "lucide-svelte";
 	import type { ComponentProps } from "svelte";
 	import NavMain from "./nav-main.svelte";
 
@@ -17,8 +17,18 @@
 				icon: BarChart3,
 			},
 			{
-				title: "Automation",
-				url: "/automation",
+				title: "Prompts",
+				url: "/prompts",
+				icon: MessageSquare,
+			},
+			{
+				title: "Sources",
+				url: "/sources",
+				icon: Link2,
+			},
+			{
+				title: "Workflows",
+				url: "/workflows",
 				icon: Zap,
 			},
 			{

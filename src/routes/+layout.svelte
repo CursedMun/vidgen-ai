@@ -4,6 +4,7 @@
   import * as Sidebar from '$lib/components/ui/sidebar/index.js';
   import SiteHeader from '@/components/site-header.svelte';
   import { ModeWatcher } from 'mode-watcher';
+  import { Toaster } from 'svelte-sonner';
   import '../app.css';
 
   const { children } = $props();
@@ -14,6 +15,7 @@
 </svelte:head>
 
 <ModeWatcher />
+<Toaster />
 
 <Sidebar.Provider
   style="--sidebar-width: calc(var(--spacing) * 2 + 75px); --header-height: calc(var(--spacing) * 12);"

@@ -3,7 +3,6 @@ import { initTRPC } from '@trpc/server';
 
 const t = initTRPC.context<TApp>().create();
 export const router = t.router;
-console.log({ t });
 export const publicProcedure = t.procedure;
 export const createCallerFactory = t.createCallerFactory;
 const authorized = () =>

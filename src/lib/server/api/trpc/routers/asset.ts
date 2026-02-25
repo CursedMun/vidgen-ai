@@ -1,14 +1,9 @@
 import { publicProcedure, router } from '@/server/infrastructure/trpc/server';
 import { z } from 'zod';
 
-export const transcriberRouter = router({
+export const assetRouter = router({
   list: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.transcription.findMany({
-      where: {
-        channelId: {
-          not: null,
-        },
-      },
+    return await ctx.db.asset.findMany({
       orderBy: {
         createdAt: 'desc',
       },
@@ -18,42 +13,51 @@ export const transcriberRouter = router({
   getById: publicProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
-      return await ctx.db.transcription.findUnique({
+      return await ctx.db.asset.findUnique({
         where: { id: input.id },
+        include: {
+          prompts: true,
+          presets: true,
+        },
       });
     }),
 
   create: publicProcedure
     .input(
       z.object({
-        videoUrl: z.url(),
+        url: z.string(),
+        type: z.string(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.services.transcriber.transcribeVideo(input.videoUrl);
+      return await ctx.db.asset.create({
+        data: {
+          url: input.url,
+          type: input.type,
+        },
+      });
     }),
 
   update: publicProcedure
     .input(
       z.object({
         id: z.number().int().positive(),
-        status: z.string().optional(),
-        transcript: z.string().optional(),
-        errorMessage: z.string().optional(),
+        url: z.string().url().optional(),
+        type: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      return await ctx.db.transcription.update({
+      return await ctx.db.asset.update({
         where: { id },
         data,
       });
     }),
 
-  remove: publicProcedure
+  delete: publicProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.transcription.delete({
+      await ctx.db.asset.delete({
         where: { id: input.id },
       });
       return { success: true };

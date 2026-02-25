@@ -8,14 +8,14 @@ import type { InstagramApi } from '../infrastructure/InstagramApi';
 import type { TiktokApi } from '../infrastructure/TiktokApi';
 import type { TopMediAiApi } from '../infrastructure/TopMediAiApi';
 import type { YoutubeApi } from '../infrastructure/YoutubeAPI';
-import { AutomationService } from './AutomationService';
-import { InstagramService } from './InstagramService';
-import { SchedulerService } from './SchedulerService';
-import { TikTokService } from './TikTokService';
+import { RssService } from './RssService';
+import { InstagramService } from './social_media/InstagramService';
+import { TikTokService } from './social_media/TikTokService';
+import { TwitterService } from './social_media/TwitterService';
+import { YoutubeService } from './social_media/YoutubeService';
 import { TranscriberService } from './TranscriberService';
-import { TwitterService } from './TwitterService';
 import { VideoService } from './VideoService';
-import { YoutubeService } from './YoutubeService';
+import { WorkflowService } from './WorkflowService';
 
 export function configureServices(
   db: TDatabase,
@@ -27,23 +27,30 @@ export function configureServices(
   musicApi: TopMediAiApi,
   tiktokApi: TiktokApi,
   instagramApi: InstagramApi,
-  twitterApi: TwitterApi
+  twitterApi: TwitterApi,
 ) {
   const youtubeService = new YoutubeService(db, yt, ytOauth2Client, youtubeApi);
-  const twitterService = new TwitterService(twitterApi)
+  const twitterService = new TwitterService(twitterApi);
   const instagramService = new InstagramService(db, instagramApi);
   const videoService = new VideoService(ai, openai, musicApi);
   const transcriberService = new TranscriberService(db, openai, youtubeService);
   const tiktokService = new TikTokService(tiktokApi);
-  const automationService = new AutomationService(db);
+  const rssService = new RssService();
+  const workflow = new WorkflowService(
+    db,
+    transcriberService,
+    videoService,
+    youtubeService,
+    instagramService,
+    rssService,
+  );
   return {
-    scheduler: new SchedulerService(db, transcriberService, youtubeService),
+    workflow,
     transcriber: transcriberService,
     youtube: youtubeService,
     video: videoService,
     tiktok: tiktokService,
     instagram: instagramService,
     twitter: twitterService,
-    automation: automationService
   };
 }

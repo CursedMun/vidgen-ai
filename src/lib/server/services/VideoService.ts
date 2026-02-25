@@ -13,8 +13,10 @@ export class VideoService {
     private musicApi: TopMediAiApi,
   ) {}
 
-
-  public async generatePhoto(imagePrompt: string, transcription: string): Promise<string> {
+  public async generatePhoto(
+    imagePrompt: string,
+    transcription: string,
+  ): Promise<string> {
     try {
       const prompt = await this.generateVideoPrompt(imagePrompt, transcription);
       console.log('generatePhoto prompt: ', prompt);
@@ -31,7 +33,6 @@ export class VideoService {
     promptUsed: string,
     scriptUsed: string,
   ): Promise<string> {
-
     const prompt = `
       Generate an engaging social media caption.
       Media type: "${mediaType}"
@@ -51,10 +52,19 @@ export class VideoService {
       messages: [{ role: 'user', content: prompt }],
     });
 
-    return chatCompletion.choices[0]?.message?.content?.trim() || "Description not generated.";
+    return (
+      chatCompletion.choices[0]?.message?.content?.trim() ||
+      'Description not generated.'
+    );
   }
 
-  public async generateVideo(videoPrompt: string, audioPrompt: string ,transcription: string, model: 'veo' | 'chatgpt' | null): Promise<string> {
+  public async generateVideo(
+    videoPrompt: string,
+    audioPrompt: string,
+    transcription: string,
+    model: 'veo' | 'chatgpt' | null,
+    inputVideoPath?: string,
+  ): Promise<string> {
     try {
       const targetSegments = 1;
 
@@ -72,15 +82,14 @@ export class VideoService {
         audioPath = await this.musicApi.saveAudioLocally(audioUrl, fileName);
         audioPath = path.resolve('static', audioPath.replace(/^\//, ''));
       }
-      let videoPath = []
-      if (!model ||  model === "chatgpt") {
-        const video = await this.generateSoraVideo(prompt)
-        videoPath = [video]
+      let videoPath = [];
+      if (!model || model === 'chatgpt') {
+        const video = await this.generateSoraVideo(prompt, inputVideoPath);
+        videoPath = [video];
       } else {
-        videoPath = await this.generateLongVideo(prompt, targetSegments)
-
+        videoPath = await this.generateLongVideo(prompt, inputVideoPath);
       }
-      if (!audioUrl) return videoPath[0]
+      if (!audioUrl) return videoPath[0];
       const finalVideoPath = await this.mergeAudioAndVideo(
         videoPath,
         audioPath,
@@ -93,7 +102,10 @@ export class VideoService {
     }
   }
 
-  private async generateVideoPrompt(videoPrompt: string, transcription: string) {
+  private async generateVideoPrompt(
+    videoPrompt: string,
+    transcription: string,
+  ) {
     const prompt = `
     ${videoPrompt}
 
@@ -181,7 +193,12 @@ export class VideoService {
       messages: [{ role: 'user', content: prompt }],
     });
 
-    return response.choices[0].message.content?.replace(/["']/g, '').replace(/\n/g, ' ').trim() || '';
+    return (
+      response.choices[0].message.content
+        ?.replace(/["']/g, '')
+        .replace(/\n/g, ' ')
+        .trim() || ''
+    );
   }
 
   private async generateImage(prompt: string): Promise<string> {
@@ -199,62 +216,73 @@ export class VideoService {
 
   private async generateLongVideo(
     prompt: string,
-    segments: number,
+    inputVideoPath?: string,
   ): Promise<string[]> {
-    const generatedFiles: string[] = [];
-    let lastVideoReference: any = null;
+    let operation: any;
 
-    for (let i = 0; i < segments; i++) {
-      let operation: any;
+    if (inputVideoPath) {
+      console.log('Using input video reference for VEO:', inputVideoPath);
+      const videoBuffer = fs.readFileSync(inputVideoPath);
+      const base64Video = videoBuffer.toString('base64');
 
-      if (i === 0) {
-        const imageBytes = await this.generateInitialImage(prompt);
-        operation = await this.ai.models.generateVideos({
-          model: 'veo-3.1-generate-preview',
-          prompt: prompt,
-          config: { aspectRatio: '9:16' },
-          image: { imageBytes, mimeType: 'image/png' },
-        });
-      } else {
-        operation = await this.ai.models.generateVideos({
-          model: 'veo-3.1-generate-preview',
-          prompt: `Continue the previous scene: ${prompt}`,
-          config: { aspectRatio: '9:16' },
-          video: {
-            videoFile: lastVideoReference,
-          } as any,
-        });
-      }
-
-      // Polling
-      const result = await this.waitForOperation(operation);
-      if (result.response?.generatedVideos?.[0]) {
-        const videoData = result.response.generatedVideos[0];
-        lastVideoReference = videoData.video;
-
-        let videoPath = `segment_${i}_${Date.now()}.mp4`;
-        videoPath = path.resolve('static', videoPath.replace(/^\//, ''));
-        await this.ai.files.download({
-          file: videoData.video,
-          downloadPath: videoPath,
-        });
-
-        generatedFiles.push(videoPath);
-      }
+      operation = await this.ai.models.generateVideos({
+        model: 'veo-3.1-generate-preview',
+        prompt: prompt,
+        config: { aspectRatio: '9:16' },
+        video: {
+          videoBytes: base64Video,
+          mimeType: 'video/mp4',
+        },
+      });
+    } else {
+      const imageBytes = await this.generateInitialImage(prompt);
+      operation = await this.ai.models.generateVideos({
+        model: 'veo-3.1-generate-preview',
+        prompt: prompt,
+        config: { aspectRatio: '9:16' },
+        image: { imageBytes, mimeType: 'image/png' },
+      });
     }
-    return generatedFiles;
-  }
 
-  private async generateSoraVideo(prompt: string): Promise<string> {
-    try {
-      console.log('Iniciando geração Sora com prompt:', prompt);
-      const videoJob = await this.openai.videos.create({
-        model: "sora-2",
-        prompt,
-        size: "720x1280", // vertical 9:16
-        seconds: "8",
+    // Polling
+    const result = await this.waitForOperation(operation);
+    if (result.response?.generatedVideos?.[0]) {
+      const videoData = result.response.generatedVideos[0];
+
+      let videoPath = `veo_${Date.now()}.mp4`;
+      videoPath = path.resolve('static', videoPath.replace(/^\//, ''));
+      await this.ai.files.download({
+        file: videoData.video,
+        downloadPath: videoPath,
       });
 
+      return [videoPath];
+    }
+
+    throw new Error('Failed to generate video with VEO');
+  }
+
+  private async generateSoraVideo(
+    prompt: string,
+    inputVideoPath?: string,
+  ): Promise<string> {
+    try {
+      console.log('Iniciando geração Sora com prompt:', prompt);
+
+      const videoConfig: OpenAI.Videos.VideoCreateParams = {
+        model: 'sora-2',
+        prompt,
+        size: '720x1280', // vertical 9:16
+        seconds: '8',
+      };
+
+      if (inputVideoPath) {
+        console.log('Using input video reference:', inputVideoPath);
+        const videoFile = fs.createReadStream(inputVideoPath);
+        videoConfig.input_reference = videoFile;
+      }
+
+      const videoJob = await this.openai.videos.create(videoConfig);
       // Polling
       await this.waitForCompletion(videoJob.id);
 
@@ -265,13 +293,13 @@ export class VideoService {
       const buffer = Buffer.from(await blob.arrayBuffer());
 
       const fileName = `video_${Date.now()}.mp4`;
-      const videoPath = path.resolve("static", fileName);
+      const videoPath = path.resolve('static', fileName);
 
       fs.writeFileSync(videoPath, buffer);
 
       const outputDir = path.resolve('./static');
       const filePath = path.join(outputDir, fileName);
-      console.log("✅ Vídeo salvo em:", filePath);
+      console.log('✅ Vídeo salvo em:', filePath);
       return filePath;
     } catch (error) {
       console.error('Erro no Sora:', (error as Error).message);
@@ -284,15 +312,15 @@ export class VideoService {
       const status = await this.openai.videos.retrieve(videoId);
 
       console.log(
-        `Status: ${status.status} | Progress: ${status.progress ?? 0}%`
+        `Status: ${status.status} | Progress: ${status.progress ?? 0}%`,
       );
 
-      if (status.status === "completed") {
+      if (status.status === 'completed') {
         return status;
       }
 
-      if (status.status === "failed") {
-        throw new Error("Video generation failed");
+      if (status.status === 'failed') {
+        throw new Error('Video generation failed');
       }
 
       await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -347,11 +375,11 @@ export class VideoService {
 
   private async generateInitialImage(prompt: string): Promise<string> {
     const response = await this.openai.images.generate({
-      model: "dall-e-3",
+      model: 'dall-e-3',
       prompt: prompt,
       n: 1,
-      size: "1024x1792", // 9:16
-      response_format: "b64_json",
+      size: '1024x1792', // 9:16
+      response_format: 'b64_json',
     });
 
     const base64Data = response.data?.[0].b64_json;
@@ -385,7 +413,9 @@ export class VideoService {
       if (normalizedPath.endsWith(rootStaticMarker)) return '/';
       return normalizedPath;
     }
-    const relativePath = normalizedPath.substring(staticIndex + staticMarker.length - 1);
+    const relativePath = normalizedPath.substring(
+      staticIndex + staticMarker.length - 1,
+    );
     return relativePath.split(path.sep).join('/');
   }
 

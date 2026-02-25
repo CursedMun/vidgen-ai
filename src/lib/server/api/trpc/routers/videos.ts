@@ -1,4 +1,3 @@
-import { schema } from '@/server/infrastructure/db/client';
 import { publicProcedure, router } from '@/server/infrastructure/trpc/server';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,7 +8,8 @@ export const videoRouter = router({
     const videoDir = path.resolve('static/final_videos');
     const imageDir = path.resolve('static/images');
     const videos = fs.existsSync(videoDir)
-      ? fs.readdirSync(videoDir)
+      ? fs
+          .readdirSync(videoDir)
           .filter((file) => file.endsWith('.mp4'))
           .map((file) => ({
             id: `video-${file}`,
@@ -21,19 +21,20 @@ export const videoRouter = router({
           }))
       : [];
     const images = fs.existsSync(imageDir)
-      ? fs.readdirSync(imageDir)
-          .filter(file => /\.(png|jpg|jpeg|webp)$/i.test(file))
-          .map(file => ({
+      ? fs
+          .readdirSync(imageDir)
+          .filter((file) => /\.(png|jpg|jpeg|webp)$/i.test(file))
+          .map((file) => ({
             id: `image-${file}`,
             name: file,
             url: `/images/${file}`,
             relativePath: `/images/${file}`,
             type: 'image' as const,
-            createdAt: fs.statSync(path.join(imageDir, file)).birthtime
+            createdAt: fs.statSync(path.join(imageDir, file)).birthtime,
           }))
       : [];
 
-    return [...videos, ...images]
+    return [...videos, ...images];
   }),
   generate: publicProcedure
     .input(
@@ -43,7 +44,12 @@ export const videoRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.services.video.generateVideo("", "", input.transcription, "chatgpt");
+      return ctx.services.video.generateVideo(
+        '',
+        '',
+        input.transcription,
+        'chatgpt',
+      );
     }),
   remove: publicProcedure
     .input(z.object({ filename: z.string() }))
@@ -68,10 +74,15 @@ export const videoRouter = router({
     .mutation(async ({ ctx, input }) => {
       console.log('input: ', input);
       if (input.platform === 'instagram') {
-        if (!input.accountId) throw new Error("Account ID is required for Instagram.");
+        if (!input.accountId)
+          throw new Error('Account ID is required for Instagram.');
       }
       const { filename, platform, caption, type } = input;
-      if (platform === 'instagram' || platform === 'youtube' || platform === 'x') {
+      if (
+        platform === 'instagram' ||
+        platform === 'youtube' ||
+        platform === 'x'
+      ) {
         try {
           // const result = await ctx.services.video.publishVideo(
           //   publicMidiaUrl,
@@ -80,7 +91,7 @@ export const videoRouter = router({
           //   type,
           //   input.accountId
           // );
-          return { success: true, id: "" };
+          return { success: true, id: '' };
         } catch (error: any) {
           console.error('Error in Instagram post:', error.message);
           throw new Error(`Error Instagram: ${error.message}`);
@@ -96,31 +107,49 @@ export const videoRouter = router({
       return { success: false };
     }),
   addInstagramAccount: publicProcedure
-    .input(z.object({
-      shortLivedToken: z.string(),
-      name: z.string()
-    }))
+    .input(
+      z.object({
+        shortLivedToken: z.string(),
+        name: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const newAccount = await ctx.services.instagram.discoverAndSaveAccount(
         input.shortLivedToken,
-        input.name
+        input.name,
       );
 
       return {
         success: true,
-        account: newAccount
+        account: newAccount,
       };
     }),
 
   listInstagramAccounts: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db
-      .select()
-      .from(schema.instagramAccounts);
+    const accounts = await ctx.db.account.findMany({
+      where: { platform: 'instagram' },
+    });
+
+    return accounts.map((acc) => {
+      const data = JSON.parse(acc.jsonData);
+      return {
+        id: acc.id,
+        name: acc.name,
+        instagramBusinessId: data.instagramBusinessId,
+      };
+    });
   }),
   listYoutubeAccounts: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db
-      .select()
-      .from(schema.youtubeAccounts);
+    const accounts = await ctx.db.account.findMany({
+      where: { platform: 'youtube' },
+    });
+
+    return accounts.map((acc) => {
+      return {
+        id: acc.id,
+        name: acc.name,
+      };
+    });
   }),
   authorizeX: publicProcedure.query(async ({ ctx }) => {
     const authUrl = await ctx.services.twitter.authLink(ctx.cookies);

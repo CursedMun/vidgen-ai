@@ -1,20 +1,27 @@
-import { createCallerFactory, router } from '@/server/infrastructure/trpc/server';
-import { channelsRouter } from './routers/channels';
-import { jobsRouter } from './routers/jobs';
+import {
+  createCallerFactory,
+  router,
+} from '@/server/infrastructure/trpc/server';
+import { accountRouter } from './routers/account';
+import { assetRouter } from './routers/asset';
 import { presetRouter } from './routers/preset';
-import { publicationRouter } from './routers/publication';
+import { promptRouter } from './routers/prompt';
+import { sourceRouter } from './routers/source';
 import { transcriberRouter } from './routers/transcriber';
 import { videoRouter } from './routers/videos';
+import { workflowRouter } from './routers/workflow';
 import { youtubeAuthRouter } from './routers/youtubeAuth';
 
 export const appRouter = router({
-  channels: channelsRouter,
-  transcriber: transcriberRouter,
-  jobs: jobsRouter,
-  videos: videoRouter,
+  accounts: accountRouter,
+  assets: assetRouter,
   presets: presetRouter,
+  prompts: promptRouter,
+  sources: sourceRouter,
+  transcriber: transcriberRouter,
+  videos: videoRouter,
+  workflows: workflowRouter,
   youtube: youtubeAuthRouter,
-  publication: publicationRouter
 });
 
 export const createCaller = createCallerFactory(appRouter);
