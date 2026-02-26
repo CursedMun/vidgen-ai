@@ -21,7 +21,6 @@
     try {
       insightsData = await trpc.accounts.accountInsights.mutate({ id: socialId });
       mediasData = await trpc.accounts.accountMedias.mutate({ id: socialId });
-      console.log('mediasData: ', JSON.stringify(mediasData));
     } catch (e) {
       console.error(e);
     }
@@ -31,7 +30,7 @@
     load();
   });
 
-  const getStat = (insights: {"name": string, "period":string, "values":Record<string, number>[]}[], name: string) => {
+  const getValue = (insights: {"name": string, "period":string, "values":Record<string, number>[]}[], name: string) => {
     return insights?.find(i => i.name === name)?.values[0]?.value ?? 0;
   };
 
@@ -85,7 +84,7 @@
               {#if media.media_type === "IMAGE"}
                 <img src={media.media_url} alt="Instagram Post" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                 <Badge class="absolute top-3 left-3 bg-black/50 backdrop-blur-md border-0">
-                  <ImageIcon size={12} class="mr-1" /> Imagem
+                  <ImageIcon size={12} class="mr-1" /> Image
                 </Badge>
               {:else}
                 <div class="relative w-full h-full">
@@ -110,7 +109,7 @@
                   </div>
                   <div class="flex flex-col">
                     <span class="text-xs text-muted-foreground">Views</span>
-                    <span class="font-bold text-sm">{getStat(media.insight, 'views').toLocaleString()}</span>
+                    <span class="font-bold text-sm">{getValue(media.insight, 'views').toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -120,7 +119,7 @@
                   </div>
                   <div class="flex flex-col">
                     <span class="text-xs text-muted-foreground">Reach</span>
-                    <span class="font-bold text-sm">{getStat(media.insight, 'reach').toLocaleString()}</span>
+                    <span class="font-bold text-sm">{getValue(media.insight, 'reach').toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -130,7 +129,7 @@
                   </div>
                   <div class="flex flex-col">
                     <span class="text-xs text-muted-foreground">Likes</span>
-                    <span class="font-bold text-sm">{getStat(media.insight, 'likes').toLocaleString()}</span>
+                    <span class="font-bold text-sm">{getValue(media.insight, 'likes').toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -140,7 +139,7 @@
                   </div>
                   <div class="flex flex-col">
                     <span class="text-xs text-muted-foreground">Comments</span>
-                    <span class="font-bold text-sm">{getStat(media.insight, 'comments').toLocaleString()}</span>
+                    <span class="font-bold text-sm">{getValue(media.insight, 'comments').toLocaleString()}</span>
                   </div>
                 </div>
 

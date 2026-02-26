@@ -81,7 +81,6 @@ export class YoutubeService extends BaseSocialMedia {
       return await this.db.account.create({
         data: {
           name: channelName,
-          email: '',
           platform: 'youtube',
           jsonData: JSON.stringify({
             channelId: channelRes.data.items?.[0]?.id || null,
