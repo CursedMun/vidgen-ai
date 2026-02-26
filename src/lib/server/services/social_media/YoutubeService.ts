@@ -114,17 +114,15 @@ export class YoutubeService extends BaseSocialMedia {
       } else if (handleMatch || customMatch || usernameMatch) {
         const identifier =
           handleMatch?.[1] || customMatch?.[1] || usernameMatch?.[1];
-        console.log(identifier);
+
         channelId =
-          (await this.youtubeApi.findChannelIdByName(identifier || '')) ?? '';
+          (await this.youtubeApi.findChannelByUsername(identifier || '')) ?? '';
       } else {
         throw new Error('Invalid YouTube channel URL format');
       }
-      console.log({ channelId });
       if (!channelId) {
         throw new Error('Could not find channel ID');
       }
-
       // Fetch channel details using YouTube Data API
       const channel = await this.yt.getChannel(channelId);
 
@@ -136,6 +134,9 @@ export class YoutubeService extends BaseSocialMedia {
       console.error('Error fetching YouTube channel by link:', error);
       throw new Error(`Failed to get YouTube account: ${error.message}`);
     }
+  }
+  public async findLatestShorts(channelId: string) {
+    return this.youtubeApi.findLatestShorts(channelId);
   }
 
   public async fetchChannelLatestVideo(
@@ -214,44 +215,28 @@ export class YoutubeService extends BaseSocialMedia {
 
     return filePath;
   }
-  public async downloadLatestChannelShortVideo(
-    channel: Awaited<ReturnType<typeof this.getYoutubeAccountByLink>>,
-  ): Promise<string | undefined> {
-    try {
-      console.log(`Fetching latest video for channel: ${channel.channelName}`);
-      const videoId = await this.youtubeApi.findLatestShortId(
-        channel.channelId!,
-      );
-      if (!videoId) {
-        console.log(`No videos found for channel: ${channel.channelName}`);
-        return undefined;
-      }
+  public async downloadShortById(videoId: string): Promise<string | undefined> {
+    console.log(`Fetching latest video for video ID: ${videoId}`);
 
-      const downloadsDir = path.join(process.cwd(), 'static/downloads');
-      if (!fs.existsSync(downloadsDir)) {
-        fs.mkdirSync(downloadsDir, { recursive: true });
-      }
-
-      const fileName = `yt_${videoId}_${Date.now()}.mp4`;
-      const filePath = path.join(downloadsDir, fileName);
-      console.log(videoId);
-      const stream = await this.yt.download(videoId, {
-        type: 'video+audio',
-      });
-
-      const file = fs.createWriteStream(filePath);
-      for await (const chunk of Utils.streamToIterable(stream)) {
-        file.write(chunk);
-      }
-      file.end();
-
-      return filePath;
-    } catch (error) {
-      console.error(
-        `Error downloading video for channel ${channel.channelName}:`,
-        error,
-      );
+    const downloadsDir = path.join(process.cwd(), 'static/downloads');
+    if (!fs.existsSync(downloadsDir)) {
+      fs.mkdirSync(downloadsDir, { recursive: true });
     }
+
+    const fileName = `yt_${videoId}_${Date.now()}.mp4`;
+    const filePath = path.join(downloadsDir, fileName);
+    console.log(videoId);
+    const stream = await this.yt.download(videoId, {
+      type: 'video+audio',
+    });
+
+    const file = fs.createWriteStream(filePath);
+    for await (const chunk of Utils.streamToIterable(stream)) {
+      file.write(chunk);
+    }
+    file.end();
+
+    return filePath;
   }
   public async getChannelLatestShortId(channelName: string) {
     const channelId = await this.youtubeApi.findChannelIdByName(channelName);
@@ -308,7 +293,7 @@ export class YoutubeService extends BaseSocialMedia {
     description: string,
     account: Account,
   ) {
-    const { refreshToken } = JSON.parse(account.jsonData);
+    const { refreshToken } = JSON.parse(account.jsonData as any);
     if (!account || !refreshToken) {
       throw new Error(
         `Refresh token não encontrado para a conta ID: ${account.id}`,

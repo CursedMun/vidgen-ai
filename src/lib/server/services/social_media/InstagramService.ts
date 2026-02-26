@@ -86,7 +86,7 @@ export class InstagramService extends BaseSocialMedia {
   public async uploadToInstagram(
     urlPath: string,
     title: string,
-    type: string | null,
+    type: 'video' | 'image',
   ) {
     try {
       let relativePath = '';
@@ -99,9 +99,9 @@ export class InstagramService extends BaseSocialMedia {
       const localFileSystemPath = `./static${relativePath}`;
       const publicUrl = await this.uploadToSupabase(
         localFileSystemPath,
-        filename || (type === 'Video' ? 'video.mp4' : 'image.png'),
+        filename || (type === 'video' ? 'video.mp4' : 'image.png'),
       );
-      if (type === 'Video') {
+      if (type === 'video') {
         return await this.instagramApi.uploadReel(publicUrl, title);
       }
       return await this.postImageToInstagram(publicUrl, title);
@@ -114,14 +114,14 @@ export class InstagramService extends BaseSocialMedia {
   public async setCurrentUser(accountId: number) {
     try {
       const token = await this.getValidTokenByAccount(accountId);
-      const account = await this.db.account.findFirst({
+      const account = await this.db.account.findUnique({
         where: {
-          jsonData: { path: ['accountId'], equals: accountId.toString() },
+          id: accountId,
         },
       });
 
       if (!account) throw new Error(`Account not found ${accountId}.`);
-      const data = JSON.parse(account.jsonData);
+      const data = JSON.parse(account.jsonData as string);
       this.instagramApi.setAccountData(token, data.instagramBusinessId);
     } catch (error) {
       console.error('Error:', error);
@@ -142,7 +142,7 @@ export class InstagramService extends BaseSocialMedia {
   public async getValidTokenByAccount(accountId: number): Promise<string> {
     const record = await this.db.account.findFirst({
       where: {
-        jsonData: { path: ['accountId'], equals: accountId.toString() },
+        id: accountId,
         platform: 'instagram',
       },
     });

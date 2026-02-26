@@ -11,11 +11,6 @@ enum Platform {
     youtube
 }
 
-enum MediaType {
-    video
-    image
-}
-
 enum Model {
     veo
     chatgpt
@@ -45,24 +40,31 @@ model Transcription {
 }
 
 model Account {
-    id           Int           @id @default(autoincrement())
-    name         String
-    platform     Platform
-    jsonData     String        @map("json_data")
-    createdAt    DateTime      @default(now()) @map("created_at")
-    updatedAt    DateTime      @updatedAt @map("updated_at")
-    workflows    Workflow[]
-    workflowJobs WorkflowJob[]
+    id        Int        @id @default(autoincrement())
+    name      String
+    platform  Platform
+    jsonData  Json       @map("json_data")
+    createdAt DateTime   @default(now()) @map("created_at")
+    updatedAt DateTime   @updatedAt @map("updated_at")
+    workflows Workflow[]
+    posts     Post[]
 
     @@map("accounts")
 }
 
+enum AssetType {
+    image
+    audio
+    video
+}
+
 model Asset {
-    id        Int      @id @default(autoincrement())
+    id        Int       @id @default(autoincrement())
     url       String
-    type      String
-    createdAt DateTime @default(now()) @map("created_at")
-    updatedAt DateTime @updatedAt @map("updated_at")
+    type      AssetType
+    metadata  Json
+    createdAt DateTime  @default(now()) @map("created_at")
+    updatedAt DateTime  @updatedAt @map("updated_at")
     prompts   Prompt[]
     presets   Preset[]
 
@@ -113,6 +115,18 @@ enum SourceType {
     rss
 }
 
+model Audio {
+    id        Int      @id @default(autoincrement())
+    title     String
+    url       String
+    duration  Int?
+    genre     String?
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    @@map("audios")
+}
+
 model Source {
     id        Int        @id @default(autoincrement())
     name      String
@@ -121,8 +135,31 @@ model Source {
     createdAt DateTime   @default(now()) @map("created_at")
     updatedAt DateTime   @updatedAt @map("updated_at")
     workflows Workflow[]
+    ideas     Idea[]
 
     @@map("sources")
+}
+
+model Idea {
+    id          Int      @id @default(autoincrement())
+    url         String   @map("url")
+    description String
+    sourceId    Int
+    source      Source   @relation(fields: [sourceId], references: [id])
+    createdAt   DateTime @default(now()) @map("created_at")
+    updatedAt   DateTime @updatedAt @map("updated_at")
+    videos      Video[]
+
+    @@map("video_ideas")
+}
+
+enum WorkflowType {
+    video_ideas_fetching
+    video_generation
+    video_publish_with_sound
+    video_publish
+    image_generation
+    image_publish
 }
 
 model Workflow {
@@ -131,48 +168,96 @@ model Workflow {
     description  String?
     //example 1h, 6h, 10m, 1w, 1m
     interval     String
-    mediaType    MediaType      @default(video) @map("media_type")
+    type         WorkflowType   @map("workflow_type")
     model        Model          @default(chatgpt)
     status       WorkflowStatus @default(active)
-    createdAt    DateTime       @default(now()) @map("created_at")
-    updatedAt    DateTime       @updatedAt @map("updated_at")
     sourceId     Int            @map("source_id")
     lastRunAt    DateTime?      @map("last_run_at")
     nextRunAt    DateTime?      @map("next_run_at")
     source       Source         @relation(fields: [sourceId], references: [id])
-    presetId     Int            @map("preset_id")
-    preset       Preset         @relation(fields: [presetId], references: [id])
+    presetId     Int?           @map("preset_id")
+    preset       Preset?        @relation(fields: [presetId], references: [id])
     accounts     Account[]
     workflowRuns WorkflowRun[]
+
+    createdAt    DateTime      @default(now()) @map("created_at")
+    updatedAt    DateTime      @updatedAt @map("updated_at")
+    workflowJobs WorkflowJob[]
 
     @@map("workflows")
 }
 
+enum WorkflowJobStatus {
+    processing
+    pending
+    completed
+    failed
+}
+
 model WorkflowRun {
-    id           Int            @id @default(autoincrement())
-    workflowId   Int            @map("workflow_id")
-    title        String
-    filePath     String
-    startedAt    DateTime       @default(now()) @map("started_at")
-    completedAt  DateTime?      @map("completed_at")
-    status       WorkflowStatus @default(active)
-    workflow     Workflow       @relation(fields: [workflowId], references: [id])
-    workflowJobs WorkflowJob[]
+    id            Int         @id @default(autoincrement())
+    workflowJobId Int         @unique @map("workflow_job_id")
+    result        Json
+    error         Json?
+    startedAt     DateTime    @default(now()) @map("started_at")
+    completedAt   DateTime?   @map("completed_at")
+    workflowJob   WorkflowJob @relation(fields: [workflowJobId], references: [id])
+    workflow      Workflow    @relation(fields: [workflowId], references: [id])
+    workflowId    Int
 
     @@map("workflow_runs")
 }
 
 model WorkflowJob {
-    id            Int         @id @default(autoincrement())
-    workflowRunId Int         @map("workflow_run_id")
-    accountId     Int?        @map("account_id")
-    externalId    String?     @map("external_id")
-    errorMessage  String?     @map("error_message")
-    executedAt    DateTime?   @map("executed_at")
-    createdAt     DateTime    @default(now()) @map("created_at")
-    updatedAt     DateTime    @updatedAt @map("updated_at")
-    workflowRun   WorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
-    account       Account?    @relation(fields: [accountId], references: [id])
+    id            Int               @id @default(autoincrement())
+    workflowRunId Int?              @unique @map("workflow_run_id")
+    data          Json
+    status        WorkflowJobStatus @default(pending)
+    executedAt    DateTime?         @map("executed_at")
+    createdAt     DateTime          @default(now()) @map("created_at")
+    updatedAt     DateTime          @updatedAt @map("updated_at")
+    workflowRun   WorkflowRun?
+    workflow      Workflow          @relation(fields: [workflowId], references: [id])
+    workflowId    Int
+    videos        Video[]
 
     @@map("workflow_jobs")
+}
+
+model WorkflowJobsPerDay {
+    id        Int          @id @default(autoincrement())
+    type      WorkflowType @unique
+    count     Int          @map("count")
+    createdAt DateTime     @default(now()) @map("created_at")
+    updatedAt DateTime     @updatedAt @map("updated_at")
+
+    @@map("workflow_jobs_per_day")
+}
+
+model Video {
+    id            Int         @id @default(autoincrement())
+    path          String
+    ideaId        Int         @map("idea_id")
+    idea          Idea        @relation(fields: [ideaId], references: [id])
+    workflowJobId Int         @map("workflow_job_id")
+    workflowJob   WorkflowJob @relation(fields: [workflowJobId], references: [id])
+    createdAt     DateTime    @default(now()) @map("created_at")
+    updatedAt     DateTime    @updatedAt @map("updated_at")
+    posts         Post[]
+
+    @@map("videos")
+}
+
+model Post {
+    id          Int      @id @default(autoincrement())
+    videoId     Int?     @map("video_id")
+    video       Video?   @relation(fields: [videoId], references: [id])
+    description String?
+    accountId   Int      @map("account_id")
+    account     Account  @relation(fields: [accountId], references: [id])
+    externalId  String?  @map("external_id")
+    createdAt   DateTime @default(now()) @map("created_at")
+    updatedAt   DateTime @updatedAt @map("updated_at")
+
+    @@map("posts")
 }

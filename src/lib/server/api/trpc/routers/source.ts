@@ -64,4 +64,13 @@ export const sourceRouter = router({
       });
       return { success: true };
     }),
+
+  testYoutubeChannel: publicProcedure
+    .input(z.object({ url: z.string().url() }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.services.youtube.getYoutubeAccountByLink(
+        input.url,
+      );
+      return result;
+    }),
 });

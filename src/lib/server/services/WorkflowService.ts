@@ -1,18 +1,11 @@
-import type { Preset, Prompt, Source, Workflow } from '@prisma/client';
+import { type Source, type Workflow } from '@prisma/client';
 import type { TDatabase } from '../infrastructure/db/client';
 import type { RssService } from './RssService';
 import type { InstagramService } from './social_media/InstagramService';
 import type { YoutubeService } from './social_media/YoutubeService';
 import type { TranscriberService } from './TranscriberService';
 import type { VideoService } from './VideoService';
-type WorkflowExtended = Workflow & {
-  preset: Preset & {
-    imagePrompt?: Prompt | null;
-    audioPrompt?: Prompt | null;
-    videoPrompt?: Prompt | null;
-  };
-  source: Source;
-};
+
 export class WorkflowService {
   constructor(
     private db: TDatabase,
@@ -24,11 +17,11 @@ export class WorkflowService {
   ) {}
 
   async init() {
-    await this.process();
-    setInterval(() => this.process(), 60000); // Re-run the process every 60 seconds
+    await this.processWorkFlows();
+    setTimeout(() => this.init(), 60000); // Re-run the process every 60 seconds
   }
 
-  private async process() {
+  private async processWorkFlows() {
     try {
       const now = new Date();
       const workflows = await this.db.workflow.findMany({
@@ -45,192 +38,288 @@ export class WorkflowService {
 
       if (workflows.length > 0) {
         console.log(`📋 Found ${workflows.length} workflow(s) to process`);
-        await this.processPendingWorkflows(workflows);
+        for (const wf of workflows) {
+          if (wf.type == 'video_ideas_fetching') {
+            await this.processVideoIdeaJobCreation(wf);
+          }
+          if (wf.type === 'video_generation') {
+            await this.processVideoGenerationJobCreation(wf);
+          }
+          if (wf.type === 'video_publish_with_sound') {
+            await this.processVideoPublishWithSoundJobCreation(wf);
+          }
+          // await this.processPendingWorkflows(wf);
+          // Calculate next run time based on interval
+          const nextRunAt = this.calculateNextRun(wf.interval);
+
+          // Update workflow to active
+          await this.db.workflow.update({
+            where: { id: wf.id },
+            data: {
+              status: 'active',
+              lastRunAt: new Date(),
+              nextRunAt: nextRunAt,
+            },
+          });
+        }
       }
     } catch (error) {
       console.error('Error in workflow process loop:', error);
     }
   }
-
-  async processPendingWorkflows(workflows: Workflow[]) {
-    for (const wf of workflows) {
-      try {
-        const workflow = await this.db.workflow.findFirst({
-          where: {
-            id: wf.id,
-            status: 'active',
+  private async processVideoPublishWithSoundJobCreation(wf: Workflow) {
+    try {
+      const workflowLimitPerDay = await this.db.workflowJobsPerDay.findFirst({
+        where: {
+          type: wf.type,
+        },
+      });
+      const countJobsToday = await this.db.workflowJob.count({
+        where: {
+          createdAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            lt: new Date(new Date().setHours(24, 0, 0, 0)),
           },
-          include: {
-            preset: {
-              include: {
-                videoPrompt: true,
-                audioPrompt: true,
-                imagePrompt: true,
-              },
-            },
-            accounts: true,
-            source: true,
-          },
-        });
-        if (!workflow) return;
-        await this.db.workflow.update({
-          where: { id: workflow.id },
-          data: { status: 'processing' },
-        });
-        const workflowRun = await this.db.workflowRun.create({
-          data: {
-            workflowId: workflow.id,
-            title: workflow.title,
-            filePath: '',
-          },
-        });
-
-        console.log(`🚀 Processing Workflow: ${workflow.title}`);
-
-        const reference = await this.getReferenceFromSource(workflow.source);
-
-        if (!workflow.preset) {
-          throw new Error('Preset not found');
-        }
-
-        const media = await this.generateMedia(workflow, reference);
-
-        if (!media) {
-          throw new Error("Media didn't generate");
-        }
-
-        const videoDescription =
-          await this.videoService.generateSocialMediaDescription(
-            workflow.mediaType.toLowerCase() as 'video' | 'image',
-            workflow.mediaType === 'video'
-              ? workflow.preset.videoPrompt?.content!
-              : workflow.preset.imagePrompt?.content!,
-          );
-
-        await this.db.workflowRun.update({
-          where: { id: workflowRun.id },
-          data: {
-            filePath: media,
-            title: videoDescription,
-          },
-        });
-
-        // Process all accounts linked to this workflow
-
-        for (const account of workflow.accounts) {
-          const job = await this.db.workflowJob.create({
-            data: {
-              workflowRunId: workflowRun.id,
-              accountId: account.id,
-            },
-          });
-          try {
-            let externalId = '';
-
-            console.log('videoDescription: ====>', videoDescription);
-
-            if (!account) {
-              throw new Error('Account not found');
-            }
-
-            // YouTube
-            if (account.platform === 'youtube') {
-              const result = await this.youtubeService.uploadShort(
-                media,
-                videoDescription,
-                workflow.preset.description || '',
-                account,
-              );
-              externalId = result?.videoId as string;
-            }
-            // Instagram
-            else if (account.platform === 'instagram') {
-              await this.instagramService.setCurrentUser(account.id);
-              console.log('media: ', media);
-              externalId = await this.instagramService.uploadToInstagram(
-                media,
-                videoDescription,
-                workflow.mediaType,
-              );
-            }
-
-            await this.db.workflowJob.update({
-              where: { id: job.id },
-              data: {
-                status: 'completed',
-                externalId: externalId,
-                executedAt: new Date(),
-              },
-            });
-          } catch (exeError: any) {
-            console.error(`Erro na conta ${account.id}:`, exeError);
-            await this.db.workflowJob.update({
-              where: { id: job.id },
-              data: { status: 'failed', errorMessage: exeError?.message },
-            });
-          }
-        }
-
-        // Calculate next run time based on interval
-        const nextRunAt = this.calculateNextRun(workflow.interval);
-
-        // Update workflow to active
-        await this.db.workflow.update({
-          where: { id: workflow.id },
-          data: {
-            status: 'active',
-            lastRunAt: new Date(),
-            nextRunAt: nextRunAt,
-          },
-        });
-      } catch (error: any) {
-        console.error(`Critical failure in workflow ${wf.id}:`, error);
-        await this.db.workflow.update({
-          where: { id: wf.id },
-          data: { status: 'deactivated' },
-        });
+        },
+      });
+      if (workflowLimitPerDay && countJobsToday >= workflowLimitPerDay.count) {
+        console.log(`🚫 Workflow limit reached for today: ${wf.type}`);
+        return;
       }
+      const workflow = await this.db.workflow.findFirst({
+        where: {
+          id: wf.id,
+          status: 'active',
+        },
+        include: {
+          preset: {
+            include: {
+              assets: true,
+            },
+          },
+          accounts: true,
+        },
+      });
+      if (!workflow) return;
+      await this.db.workflow.update({
+        where: { id: workflow.id },
+        data: { status: 'processing' },
+      });
+      const videosGenerated = await this.db.video.findMany({
+        where: {
+          workflowJob: {
+            workflowId: wf.id,
+          },
+        },
+        include: {
+          idea: true,
+        },
+      });
+      if (!videosGenerated) {
+        console.warn(
+          '[WorkflowService] No videos generated found for workflow ID: ',
+          wf.id,
+        );
+        return;
+      }
+
+      const soundsInThisPreset = workflow.preset?.assets.filter((x) => x.type);
+      if (!soundsInThisPreset) {
+        console.warn(
+          '[WorkflowService] No sounds found in preset for workflow ID: ',
+          wf.id,
+        );
+        return;
+      }
+      await this.db.workflowJob.createMany({
+        data: videosGenerated
+          .map((video) => {
+            const randomSound =
+              soundsInThisPreset[
+                Math.floor(Math.random() * soundsInThisPreset.length)
+              ];
+            return workflow.accounts.map((x) => {
+              return {
+                workflowId: workflow.id,
+                data: {
+                  videoId: video.id,
+                  soundId: randomSound.id,
+                  accountId: x.id,
+                },
+              };
+            });
+          })
+          .flat(),
+      });
+    } catch (error) {
+      await this.db.workflow.update({
+        where: { id: wf.id },
+        data: { status: 'deactivated' },
+      });
+      console.error('Error in processVideoIdeaFetching:', error);
+    } finally {
+      await this.db.workflow.update({
+        where: { id: wf.id },
+        data: { status: 'active' },
+      });
     }
   }
-
-  private async generateMedia(
-    workflow: WorkflowExtended,
-    reference:
-      | {
-          text: string;
-          videoPath: undefined;
-        }
-      | {
-          text: undefined;
-          videoPath: string | undefined;
+  private async processVideoIdeaJobCreation(wf: Workflow) {
+    try {
+      const workflowLimitPerDay = await this.db.workflowJobsPerDay.findFirst({
+        where: {
+          type: wf.type,
         },
-  ) {
-    if (workflow.mediaType === 'image') {
-      if (workflow.source.type === 'youtube') {
-        throw new Error("Can't generate a image from YouTube video");
+      });
+      const countJobsToday = await this.db.workflowJob.count({
+        where: {
+          createdAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            lt: new Date(new Date().setHours(24, 0, 0, 0)),
+          },
+        },
+      });
+      if (workflowLimitPerDay && countJobsToday >= workflowLimitPerDay.count) {
+        console.log(`🚫 Workflow limit reached for today: ${wf.type}`);
+        return;
       }
-      if (!workflow.preset.imagePrompt) {
-        throw new Error('Image prompt not found');
-      }
-      if (!reference.text) {
-        throw new Error('Reference text not found');
-      }
-      return await this.videoService.generatePhoto(
-        workflow.preset.imagePrompt.content,
-        reference.text,
+      const workflow = await this.db.workflow.findFirst({
+        where: {
+          id: wf.id,
+          status: 'active',
+        },
+        include: {
+          source: true,
+        },
+      });
+      if (!workflow) return;
+      await this.db.workflow.update({
+        where: { id: workflow.id },
+        data: { status: 'processing' },
+      });
+      const ideasAssociatedWithThisSource = await this.db.idea.findMany({
+        where: {
+          sourceId: workflow.sourceId,
+        },
+      });
+      const channel = await this.youtubeService.getYoutubeAccountByLink(
+        workflow.source.url,
       );
+      const latestShorts = await this.youtubeService.findLatestShorts(
+        channel.channelId,
+      );
+      if (!latestShorts) {
+        console.log(`No latest shorts found for channel: ${channel.channelId}`);
+        return;
+      }
+      const uniqueShorts = latestShorts.filter(
+        (short) =>
+          !ideasAssociatedWithThisSource.some(
+            (idea) =>
+              idea.url === `https://www.youtube.com/shorts/${short.id.videoId}`,
+          ),
+      );
+      await this.db.workflowJob.createMany({
+        data: uniqueShorts.map((x) => ({
+          workflowId: workflow.id,
+          data: {
+            videoId: x.id.videoId,
+            videoUrl: `https://www.youtube.com/shorts/${x.id.videoId}`,
+          },
+        })),
+      });
+    } catch (error) {
+      await this.db.workflow.update({
+        where: { id: wf.id },
+        data: { status: 'deactivated' },
+      });
+      console.error('Error in processVideoIdeaFetching:', error);
+    } finally {
+      await this.db.workflow.update({
+        where: { id: wf.id },
+        data: { status: 'active' },
+      });
     }
-    if (!workflow.preset.videoPrompt?.content) {
-      throw new Error('Video prompt not found');
+  }
+  private async processVideoGenerationJobCreation(wf: Workflow) {
+    try {
+      const workflowLimitPerDay = await this.db.workflowJobsPerDay.findFirst({
+        where: {
+          type: wf.type,
+        },
+      });
+      const countJobsToday = await this.db.workflowJob.count({
+        where: {
+          createdAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            lt: new Date(new Date().setHours(24, 0, 0, 0)),
+          },
+        },
+      });
+      if (workflowLimitPerDay && countJobsToday >= workflowLimitPerDay.count) {
+        console.log(`🚫 Workflow limit reached for today: ${wf.type}`);
+        return;
+      }
+      const workflow = await this.db.workflow.findFirst({
+        where: {
+          id: wf.id,
+          status: 'active',
+        },
+        include: {
+          source: true,
+        },
+      });
+      if (!workflow) return;
+      await this.db.workflow.update({
+        where: { id: workflow.id },
+        data: { status: 'processing' },
+      });
+      const ideasAssociated = await this.db.idea.findMany({
+        where: {
+          sourceId: workflow.sourceId,
+        },
+      });
+      const ideas = ideasAssociated.map((idea) => {
+        return {
+          ideaId: idea.id,
+        };
+      });
+      const existing = await this.db.workflowJob.findMany({
+        where: {
+          workflow: {
+            type: 'video_generation',
+          },
+          data: {
+            equals: ideas,
+          },
+        },
+      });
+      const uniqueIdeas = ideas.filter(
+        (idea) =>
+          !existing.some(
+            (e) => e.data && (e.data as any).ideaId === idea.ideaId,
+          ),
+      );
+      await this.db.workflowJob.createMany({
+        data: uniqueIdeas.map((idea) => ({
+          workflowId: workflow.id,
+          data: {
+            ideaId: idea.ideaId,
+          },
+        })),
+      });
+    } catch (error) {
+      await this.db.workflow.update({
+        where: { id: wf.id },
+        data: { status: 'deactivated' },
+      });
+      console.error('Error in processVideoIdeaFetching:', error);
+    } finally {
+      await this.db.workflow.update({
+        where: { id: wf.id },
+        data: { status: 'active' },
+      });
     }
-
-    await this.videoService.generateVideo(
-      workflow.preset.videoPrompt?.content,
-      workflow.model,
-      workflow.preset.audioPrompt?.content!,
-      reference.text,
-      reference.videoPath,
-    );
   }
 
   private async getReferenceFromSource(source: Source) {
@@ -241,13 +330,6 @@ export class WorkflowService {
 
       return { text: rssContent.description, videoPath: undefined };
     }
-    //TODO make source.type === "transcription"
-    const channel = await this.youtubeService.getYoutubeAccountByLink(
-      source.url,
-    );
-    const videoPath =
-      await this.youtubeService.downloadLatestChannelShortVideo(channel);
-    return { text: undefined, videoPath };
   }
 
   private calculateNextRun(frequency: string): Date | null {

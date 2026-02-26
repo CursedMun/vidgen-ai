@@ -35,6 +35,12 @@
   let isEditing = $state(false);
   let searchQuery = $state('');
 
+  // Test state
+  let isTestDialogOpen = $state(false);
+  let testUrl = $state('');
+  let isTesting = $state(false);
+  let testResult = $state<any>(null);
+
   // Pagination state
   let currentPage = $state(1);
   const itemsPerPage = 6;
@@ -160,6 +166,27 @@
     sources = await trpc.sources.list.query();
   }
 
+  async function testYoutubeChannel() {
+    if (!testUrl) {
+      toast.error('Please enter a YouTube URL');
+      return;
+    }
+
+    isTesting = true;
+    testResult = null;
+    try {
+      const result = await trpc.sources.testYoutubeChannel.mutate({ url: testUrl });
+      testResult = result;
+      toast.success(`Found channel: ${result.channelName}`);
+    } catch (error: any) {
+      console.error('Error testing YouTube channel:', error);
+      toast.error(error.message || 'Failed to fetch YouTube channel');
+      testResult = { error: error.message };
+    } finally {
+      isTesting = false;
+    }
+  }
+
   // Load sources on mount
   onMount(() => {
     loadSources();
@@ -175,21 +202,35 @@
       </p>
     </div>
 
-    <Dialog.Root bind:open={isDialogOpen}>
-      <Dialog.Trigger asChild>
-        <Button 
-          class="gap-2"
-          onclick={() => {
-            // Clear form when opening new source dialog
-            name = '';
-            url = '';
-            type = 'youtube';
-          }}
-        >
-          <Plus class="h-4 w-4" />
-          New Source
-        </Button>
-      </Dialog.Trigger>
+    <div class="flex gap-2">
+      <Button 
+        variant="outline"
+        class="gap-2"
+        onclick={() => {
+          testUrl = '';
+          testResult = null;
+          isTestDialogOpen = true;
+        }}
+      >
+        <Search class="h-4 w-4" />
+        Test YouTube Channel
+      </Button>
+
+      <Dialog.Root bind:open={isDialogOpen}>
+        <Dialog.Trigger asChild>
+          <Button 
+            class="gap-2"
+            onclick={() => {
+              // Clear form when opening new source dialog
+              name = '';
+              url = '';
+              type = 'youtube';
+            }}
+          >
+            <Plus class="h-4 w-4" />
+            New Source
+          </Button>
+        </Dialog.Trigger>
       <Dialog.Content class="max-w-md">
         <Dialog.Header>
           <Dialog.Title>Create New Source</Dialog.Title>
@@ -485,6 +526,71 @@
         </Button>
         <Button onclick={updateSource} disabled={isEditing || !name || !url}>
           {isEditing ? 'Updating...' : 'Update Source'}
+        </Button>
+      </Dialog.Footer>
+    </Dialog.Content>
+  </Dialog.Root>
+
+  <!-- Test YouTube Channel Dialog -->
+  <Dialog.Root bind:open={isTestDialogOpen}>
+    <Dialog.Content class="max-w-md">
+      <Dialog.Header>
+        <Dialog.Title>Test YouTube Channel</Dialog.Title>
+        <Dialog.Description>
+          Enter a YouTube channel URL to test the channel lookup functionality.
+        </Dialog.Description>
+      </Dialog.Header>
+
+      <div class="space-y-4 py-4">
+        <div class="space-y-2">
+          <Label for="test-url">YouTube Channel URL</Label>
+          <Input
+            id="test-url"
+            bind:value={testUrl}
+            placeholder="https://youtube.com/@channel"
+            type="url"
+          />
+          <p class="text-xs text-muted-foreground">
+            Supports: @username, /channel/ID, /c/name, /user/name formats
+          </p>
+        </div>
+
+        {#if testResult}
+          <div class="rounded-lg border p-4 space-y-2">
+            {#if testResult.error}
+              <div class="text-sm text-destructive">
+                <strong>Error:</strong> {testResult.error}
+              </div>
+            {:else}
+              <div class="space-y-1">
+                <div class="text-sm">
+                  <strong class="text-foreground">Channel Name:</strong>
+                  <span class="text-muted-foreground ml-2">{testResult.channelName}</span>
+                </div>
+                <div class="text-sm">
+                  <strong class="text-foreground">Channel ID:</strong>
+                  <span class="text-muted-foreground ml-2 font-mono text-xs">{testResult.channelId}</span>
+                </div>
+              </div>
+            {/if}
+          </div>
+        {/if}
+      </div>
+
+      <Dialog.Footer>
+        <Button
+          variant="outline"
+          onclick={() => {
+            isTestDialogOpen = false;
+            testUrl = '';
+            testResult = null;
+          }}
+          disabled={isTesting}
+        >
+          Close
+        </Button>
+        <Button onclick={testYoutubeChannel} disabled={isTesting || !testUrl}>
+          {isTesting ? 'Testing...' : 'Test Channel'}
         </Button>
       </Dialog.Footer>
     </Dialog.Content>

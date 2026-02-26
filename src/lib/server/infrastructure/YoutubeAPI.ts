@@ -1,6 +1,55 @@
 import wretch from 'wretch';
 import QueryStringAddon from 'wretch/addons/queryString';
 
+interface YoutubeThumbnail {
+  url: string;
+  width: number;
+  height: number;
+}
+
+interface YoutubeThumbnails {
+  default: YoutubeThumbnail;
+  medium: YoutubeThumbnail;
+  high: YoutubeThumbnail;
+}
+
+interface YoutubeSnippet {
+  publishedAt: string;
+  channelId: string;
+  title: string;
+  description: string;
+  thumbnails: YoutubeThumbnails;
+  channelTitle: string;
+  liveBroadcastContent: string;
+  publishTime: string;
+}
+
+interface YoutubeSearchResultId {
+  kind: string;
+  videoId: string;
+}
+
+interface YoutubeSearchResultItem {
+  kind: string;
+  etag: string;
+  id: YoutubeSearchResultId;
+  snippet: YoutubeSnippet;
+}
+
+interface YoutubePageInfo {
+  totalResults: number;
+  resultsPerPage: number;
+}
+
+export interface YoutubeSearchResponse {
+  kind: string;
+  etag: string;
+  nextPageToken?: string;
+  regionCode: string;
+  pageInfo: YoutubePageInfo;
+  items: YoutubeSearchResultItem[];
+}
+
 export class YoutubeApi {
   private googleAPI = wretch('https://www.googleapis.com/youtube/v3').addon(
     QueryStringAddon,
@@ -12,6 +61,20 @@ export class YoutubeApi {
     try {
       const res = await this.googleAPI
         .url('/search')
+        .query(params)
+        .get()
+        .json<any>();
+      return res.items;
+    } catch (error) {
+      console.error('Error searching for channel:', (error as Error).message);
+      return null;
+    }
+  }
+  public async channels(params: Record<string, any>): Promise<any> {
+    params.key = this.apiKey;
+    try {
+      const res = await this.googleAPI
+        .url('/channels')
         .query(params)
         .get()
         .json<any>();
@@ -40,10 +103,18 @@ export class YoutubeApi {
       part: 'snippet',
       q: name,
       type: 'channel',
-      maxResults: 1,
+      maxResults: 10,
     };
     const items = await this.search(params);
     return items && items.length ? items[0].id.channelId : null;
+  }
+  public async findChannelByUsername(username: string): Promise<any> {
+    const params = {
+      part: 'snippet',
+      forHandle: `@${username}`,
+    };
+    const items = await this.channels(params);
+    return items && items.length ? items[0].id : null;
   }
   public async findChannelIdByUrl(videoId: string): Promise<string | null> {
     const params = {
@@ -65,6 +136,22 @@ export class YoutubeApi {
     };
     const items = await this.search(params);
     return items && items.length ? items[0].id.videoId : null;
+  }
+  public async findLatestShorts(
+    channelId: string,
+  ): Promise<YoutubeSearchResponse['items'] | null> {
+    const params = {
+      part: 'snippet',
+      channelId: channelId,
+      type: 'video',
+      videoDuration: 'short',
+      order: 'date',
+      maxResults: 10,
+    };
+    const response = await this.search(params);
+    if (!response) return null;
+
+    return response;
   }
 
   public extractVideoId(url: string): string | null {
