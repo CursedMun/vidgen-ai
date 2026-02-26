@@ -59,6 +59,22 @@ export class InstagramApi {
       .json<{ access_token: string; expires_in: number; token_type: string }>();
   }
 
+  public async getAccountInsights(instagramBusinessId: string, token: string) {
+    const response = await this.api
+      .url(`/${instagramBusinessId}/insights`)
+      .query({
+        metric: "reach,accounts_engaged,profile_views",
+        metric_type: "total_value",
+        period: "day",
+        access_token: token,
+      })
+      .get()
+      .json<any>();
+
+
+    return { data: response.data };
+  }
+
   public async uploadReel(videoUrl: string, caption: string) {
     try {
       console.log('🚀 Iniciando upload de Reel...');

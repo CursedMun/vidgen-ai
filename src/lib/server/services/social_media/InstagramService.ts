@@ -43,6 +43,20 @@ export class InstagramService extends BaseSocialMedia {
     }
   }
 
+  public async getInsights(id: number) {
+    const account = await this.db.account.findFirst({
+      where: {
+        id: id,
+      },
+    });
+    if (!account) throw new Error(`Account ID ${id} not found.`);
+
+    if (account.platform !== "instagram") return []
+    const data = JSON.parse(account.jsonData);
+
+    return (await this.instagramApi.getAccountInsights(data.instagramBusinessId, data.accessToken)).data
+  }
+
   public async uploadToSupabase(filePath: string, fileName: string) {
     const fileBuffer = readFileSync(filePath);
     const extension = path.extname(filePath).toLowerCase(); // .jpg, .png, .mp4, etc.

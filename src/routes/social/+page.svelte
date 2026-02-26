@@ -144,9 +144,10 @@
         {#if accounts.length > 0}
           <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
             {#each accounts as account}
-              <div class="group cursor-pointer">
-                <div class="relative rounded-lg overflow-hidden border transition-all hover:border-primary">
-                  <div class="p-4">
+            <div class="group cursor-pointer">
+              <div class="relative rounded-lg overflow-hidden border transition-all hover:border-primary">
+                <div class="p-4">
+                  <Button href="/social/{account.id}" variant="link">
                     <div class="flex items-center gap-3 mb-2">
                       <div class="h-10 w-10 rounded-full bg-pink-500/10 flex items-center justify-center text-pink-500 border border-pink-500/20">
                         <IconBrandInstagram size={20} />
@@ -156,6 +157,7 @@
                         <p class="text-xs text-muted-foreground truncate">ID: {account.instagramBusinessId}</p>
                       </div>
                     </div>
+                  </Button>
                   </div>
                 </div>
               </div>
