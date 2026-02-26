@@ -106,6 +106,32 @@ export const accountRouter = router({
         account: newAccount,
       };
     }),
+  listInstagramAccounts: publicProcedure.query(async ({ ctx }) => {
+    const accounts = await ctx.db.account.findMany({
+      where: { platform: 'instagram' },
+    });
+
+    return accounts.map((acc) => {
+      const data = JSON.parse(acc.jsonData);
+      return {
+        id: acc.id,
+        name: acc.name,
+        instagramBusinessId: data.instagramBusinessId,
+      };
+    });
+  }),
+  listYoutubeAccounts: publicProcedure.query(async ({ ctx }) => {
+    const accounts = await ctx.db.account.findMany({
+      where: { platform: 'youtube' },
+    });
+
+    return accounts.map((acc) => {
+      return {
+        id: acc.id,
+        name: acc.name,
+      };
+    });
+  }),
 
   accountInsights: publicProcedure
     .input(

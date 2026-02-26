@@ -36,6 +36,7 @@ export const workflowRouter = router({
         title: z.string().min(1),
         description: z.string().optional(),
         interval: z.string(),
+        jobsPerInterval: z.number().int().min(0).default(0),
         type: z.enum([
           'video_ideas_fetching',
           'video_generation',
@@ -80,6 +81,7 @@ export const workflowRouter = router({
         title: z.string().min(1).optional(),
         description: z.string().optional(),
         interval: z.string().optional(),
+        jobsPerInterval: z.number().int().min(0).optional(),
         type: z
           .enum([
             'video_ideas_fetching',

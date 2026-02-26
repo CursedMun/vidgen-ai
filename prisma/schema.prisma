@@ -67,6 +67,8 @@ model Asset {
     updatedAt DateTime  @updatedAt @map("updated_at")
     prompts   Prompt[]
     presets   Preset[]
+    idea      Idea?     @relation(fields: [ideaId], references: [id])
+    ideaId    Int?
 
     @@map("assets")
 }
@@ -149,6 +151,7 @@ model Idea {
     createdAt   DateTime @default(now()) @map("created_at")
     updatedAt   DateTime @updatedAt @map("updated_at")
     videos      Video[]
+    assets      Asset[]
 
     @@map("ideas")
 }
@@ -163,22 +166,23 @@ enum WorkflowType {
 }
 
 model Workflow {
-    id           Int            @id @default(autoincrement())
-    title        String
-    description  String?
+    id              Int            @id @default(autoincrement())
+    title           String
+    description     String?
     //example 1h, 6h, 10m, 1w, 1m
-    interval     String
-    type         WorkflowType   @map("workflow_type")
-    model        Model          @default(chatgpt)
-    status       WorkflowStatus @default(active)
-    sourceId     Int            @map("source_id")
-    lastRunAt    DateTime?      @map("last_run_at")
-    nextRunAt    DateTime?      @map("next_run_at")
-    source       Source         @relation(fields: [sourceId], references: [id])
-    presetId     Int?           @map("preset_id")
-    preset       Preset?        @relation(fields: [presetId], references: [id])
-    accounts     Account[]
-    workflowRuns WorkflowRun[]
+    interval        String
+    jobsPerInterval Int            @default(0) @map("jobs_per_interval")
+    type            WorkflowType   @map("workflow_type")
+    model           Model          @default(chatgpt)
+    status          WorkflowStatus @default(active)
+    sourceId        Int            @map("source_id")
+    lastRunAt       DateTime?      @map("last_run_at")
+    nextRunAt       DateTime?      @map("next_run_at")
+    source          Source         @relation(fields: [sourceId], references: [id])
+    presetId        Int?           @map("preset_id")
+    preset          Preset?        @relation(fields: [presetId], references: [id])
+    accounts        Account[]
+    workflowRuns    WorkflowRun[]
 
     createdAt    DateTime      @default(now()) @map("created_at")
     updatedAt    DateTime      @updatedAt @map("updated_at")

@@ -107,10 +107,20 @@ export class WorkflowService {
       });
       const videosGenerated = await this.db.video.findMany({
         where: {
-          workflowJob: {
-            workflowId: wf.id,
-          },
+          AND: [
+            {
+              workflowJob: {
+                workflowId: wf.id,
+              },
+            },
+            {
+              posts: {
+                none: {},
+              },
+            },
+          ],
         },
+        take: wf.jobsPerInterval,
         include: {
           idea: true,
         },
@@ -215,13 +225,17 @@ export class WorkflowService {
         console.log(`No latest shorts found for channel: ${channel.channelId}`);
         return;
       }
-      const uniqueShorts = latestShorts.filter(
-        (short) =>
-          !ideasAssociatedWithThisSource.some(
-            (idea) =>
-              idea.url === `https://www.youtube.com/shorts/${short.id.videoId}`,
-          ),
-      );
+      const uniqueShorts = latestShorts
+        .filter(
+          (short) =>
+            !ideasAssociatedWithThisSource.some(
+              (idea) =>
+                idea.url ===
+                `https://www.youtube.com/shorts/${short.id.videoId}`,
+            ),
+        )
+        .slice(0, wf.jobsPerInterval || undefined);
+
       await this.db.workflowJob.createMany({
         data: uniqueShorts.map((x) => ({
           workflowId: workflow.id,
@@ -300,12 +314,14 @@ export class WorkflowService {
           },
         },
       });
-      const uniqueIdeas = ideas.filter(
-        (idea) =>
-          !existing.some(
-            (e) => e.data && (e.data as any).ideaId === idea.ideaId,
-          ),
-      );
+      const uniqueIdeas = ideas
+        .filter(
+          (idea) =>
+            !existing.some(
+              (e) => e.data && (e.data as any).ideaId === idea.ideaId,
+            ),
+        )
+        .slice(0, wf.jobsPerInterval || undefined);
       await this.db.workflowJob.createMany({
         data: uniqueIdeas.map((idea) => ({
           workflowId: workflow.id,

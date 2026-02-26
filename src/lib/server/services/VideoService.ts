@@ -15,25 +15,10 @@ export type Asset = {
 };
 export class VideoService {
   constructor(
-    private ai: GoogleGenAI,
-    private openai: OpenAI,
+    private googleAI: GoogleGenAI,
+    private openAI: OpenAI,
     private musicApi: TopMediAiApi,
   ) {}
-
-  public async generatePhoto(
-    imagePrompt: string,
-    transcription: string,
-  ): Promise<string> {
-    try {
-      const prompt = await this.generateVideoPrompt(imagePrompt, transcription);
-      console.log('generatePhoto prompt: ', prompt);
-      const imagePaths = await this.generateImage(prompt);
-      return imagePaths;
-    } catch (error) {
-      console.error('ERROR PHOTO GEMINI/VEO:', (error as Error).message);
-      throw error;
-    }
-  }
 
   public async generateSocialMediaDescription(
     mediaType: 'video' | 'image',
@@ -52,7 +37,7 @@ export class VideoService {
       5. Maximum length: 100 words.
     `;
 
-    const chatCompletion = await this.openai.chat.completions.create({
+    const chatCompletion = await this.openAI.chat.completions.create({
       model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
     });
@@ -64,94 +49,24 @@ export class VideoService {
   }
 
   public async generateVideo(
-    videoPrompt: string,
+    prompt: string,
     model: 'veo' | 'chatgpt' = 'chatgpt',
-    audioPrompt?: string,
     imagesReference?: Asset[],
-    videoDescription?: string,
   ): Promise<string> {
     try {
-      const prompt = await this.generateVideoPrompt(videoPrompt, audioPrompt);
-      // const musicPrompt = await this.generateSpeechScriptFromTranscript(
-      //   audioPrompt,
-      //   transcription,
-      //   targetSegments,
-      // );
-
-      // let audioPath = '';
-      // const audioUrl = await this.musicApi.generateMusic(musicPrompt);
-      // if (audioUrl) {
-      //   const fileName = `sportiz-${Date.now()}`;
-      //   audioPath = await this.musicApi.saveAudioLocally(audioUrl, fileName);
-      //   audioPath = path.resolve('static', audioPath.replace(/^\//, ''));
-      // }
       let videoPath = [];
       if (!model || model === 'chatgpt') {
         const video = await this.generateSoraVideo(prompt, '');
         videoPath = [video];
       } else {
-        videoPath = await this.generateVeoVideo(
-          prompt,
-          videoDescription,
-          imagesReference,
-        );
+        videoPath = await this.generateVeoVideo(prompt, imagesReference);
       }
-      // if (!audioUrl) return videoPath[0];
-      // const finalVideoPath = await this.mergeAudioAndVideo(
-      //   videoPath,
-      //   audioPath,
-      // );
 
       return videoPath[0];
     } catch (error) {
       console.error('Error generating video:', (error as Error).message);
       throw error;
     }
-  }
-
-  private async generateVideoPrompt(videoPrompt: string, audioPrompt?: string) {
-    const prompt = `
-    ${videoPrompt}
-
-    Instructions:
-    - Format: vertical 9:16
-    - Duration: 30 seconds
-    - Style: cinematic, realistic
-    - Output: a single AI video generation prompt
-
-    Steps:
-    1. Extract the main message in one sentence.
-    2. Identify the emotion (choose one word).
-    3. Identify pacing (slow, medium, or fast).
-    4. Describe:
-      - scene
-      - actions
-      - editing
-      - lighting
-
-    Rules:
-    - Do NOT explain.
-    - Do NOT repeat the transcription.
-    - Use clear, direct language.
-    - NO FAMOUS NAMES: If the transcription mentions celebrities, politicians, or public figures, replace them with generic, high-quality descriptions (e.g., "a charismatic tech leader" instead of "Elon Musk", or "a legendary football player" instead of "Cristiano Ronaldo").
-    - Ensure the visual description is rich enough to guide the AI without using real-world identities.
-
-    Audio:
-    """
-    ${audioPrompt ?? 'Copy from reference video'}
-    """
-    `;
-
-    // const response = await this.ai.models.generateContent({
-    //   model: 'gemini-2.0-flash',
-    //   contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    // });
-    const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    return response.choices[0].message.content || '';
   }
 
   private async generateSpeechScriptFromTranscript(
@@ -192,7 +107,7 @@ export class VideoService {
     """
     `;
 
-    const response = await this.openai.chat.completions.create({
+    const response = await this.openAI.chat.completions.create({
       model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
     });
@@ -207,7 +122,7 @@ export class VideoService {
   public async describeVideo(inputPath: string) {
     const videoBuffer = fs.readFileSync(inputPath);
     const base64Video = videoBuffer.toString('base64');
-    const response = await this.ai.models.generateContent({
+    const response = await this.googleAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [
         {
@@ -239,35 +154,12 @@ Be specific and descriptive.`,
     return response.text;
   }
 
-  private async generateImage(prompt: string): Promise<string> {
-    const imageBytes = await this.generateInitialImage(prompt);
-    const outputDir = path.resolve('./static/images');
-    const fileName = `image_${Date.now()}.png`;
-    const filePath = path.join(outputDir, fileName);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-    const buffer = Buffer.from(imageBytes, 'base64');
-    fs.writeFileSync(filePath, buffer);
-    return filePath;
-  }
-
   private async generateVeoVideo(
     prompt: string,
-    videoDescription?: string,
     referenceImages?: Asset[],
+    referenceVideos?: Asset[],
   ): Promise<string[]> {
     let operation: GenerateVideosOperation;
-
-    console.log('Using input video reference for VEO:', videoDescription);
-    const promptWithVideDescription = videoDescription
-      ? `${prompt}
-
-Reference video style and characteristics:
-${videoDescription}
-
-Create a new video following the prompt above while maintaining similar visual style, cinematography, and mood as described in the reference.`
-      : prompt;
 
     const refImages = referenceImages?.map((x) => {
       // Ensure imageBytes is base64 encoded
@@ -283,9 +175,9 @@ Create a new video following the prompt above while maintaining similar visual s
       } as VideoGenerationReferenceImage;
     });
 
-    operation = await this.ai.models.generateVideos({
+    operation = await this.googleAI.models.generateVideos({
       model: 'veo-3.1-generate-preview',
-      prompt: promptWithVideDescription,
+      prompt: prompt,
       config: {
         aspectRatio: '9:16',
         referenceImages: refImages,
@@ -299,7 +191,7 @@ Create a new video following the prompt above while maintaining similar visual s
       let videoPath = `veo_${Date.now()}.mp4`;
       videoPath = path.resolve('static', videoPath.replace(/^\//, ''));
       if (videoData.video) {
-        await this.ai.files.download({
+        await this.googleAI.files.download({
           file: videoData.video,
           downloadPath: videoPath,
         });
@@ -335,12 +227,12 @@ Create a new video following the prompt above while maintaining similar visual s
         videoConfig.input_reference = videoFile;
       }
 
-      const videoJob = await this.openai.videos.create(videoConfig);
+      const videoJob = await this.openAI.videos.create(videoConfig);
       // Polling
       await this.waitForCompletion(videoJob.id);
 
       // Download
-      const response = await this.openai.videos.downloadContent(videoJob.id);
+      const response = await this.openAI.videos.downloadContent(videoJob.id);
 
       const blob = await response.blob();
       const buffer = Buffer.from(await blob.arrayBuffer());
@@ -362,7 +254,7 @@ Create a new video following the prompt above while maintaining similar visual s
 
   private async waitForCompletion(videoId: string) {
     while (true) {
-      const status = await this.openai.videos.retrieve(videoId);
+      const status = await this.openAI.videos.retrieve(videoId);
 
       console.log(
         `Status: ${status.status} | Progress: ${status.progress ?? 0}%`,
@@ -426,21 +318,6 @@ Create a new video following the prompt above while maintaining similar visual s
     });
   }
 
-  private async generateInitialImage(prompt: string): Promise<string> {
-    const response = await this.openai.images.generate({
-      model: 'dall-e-3',
-      prompt: prompt,
-      n: 1,
-      size: '1024x1792', // 9:16
-      response_format: 'b64_json',
-    });
-
-    const base64Data = response.data?.[0].b64_json;
-    if (!base64Data) throw new Error('Failed to generate image with DALL-E');
-
-    return base64Data;
-  }
-
   private async waitForOperation(
     operation: GenerateVideosOperation | undefined,
   ): Promise<GenerateVideosOperation> {
@@ -449,7 +326,7 @@ Create a new video following the prompt above while maintaining similar visual s
     while (!operation.done) {
       console.log('Awaiting video (10s)...');
       await new Promise((resolve) => setTimeout(resolve, 10000));
-      operation = await this.ai.operations.getVideosOperation({
+      operation = await this.googleAI.operations.getVideosOperation({
         operation: operation,
       });
     }
@@ -475,55 +352,50 @@ Create a new video following the prompt above while maintaining similar visual s
     return relativePath.split(path.sep).join('/');
   }
 
-  // public async publishVideo(videoUrl: string, caption: string, platform: 'instagram' | 'x' | 'tiktok'| 'youtube' , type: "image" | "video", accoundId?: number | null) {
-  //   console.log('videoUrl: ', videoUrl);
-  //   try {
+  public async extractFramesAsBase64(
+    videoPath: string,
+    frameCount: number = 3,
+  ): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      const outputDir = path.join('static', 'downloads', 'frames');
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
 
-  //     // if (platform === "instagram") {
-  //     //   const response = await this.instagramPublish(videoUrl, caption, type, accoundId as number)
-  //     //   return response;
-  //     // }
-  //     // if (platform === "x") {
-  //     //   const response = await this.twitterPublish(videoUrl, caption, type)
-  //     //   return response;
-  //     // }
-  //     // if (platform === "youtube") {
-  //     //   const response = await this.youtubePublish(videoUrl, caption)
-  //     //   return response;
-  //     // }
-  //   } catch (error) {
-  //     console.error(
-  //       'Publish Video error:',
-  //       (error as Error).message,
-  //     );
-  //     throw new Error('Publish Video error.');
-  //   }
-  // }
+      const outputPattern = path.join(outputDir, `frame_%03d.png`);
+      const frames: string[] = [];
+      const command = ffmpeg();
+      command.input(videoPath);
 
-  // private async instagramPublish(url: string, caption: string, type: "image" | "video", accoundId: number) {
-  //   await this.instagramService.setCurrentUser(accoundId)
-  //   if (type === "image") {
-  //     const result = await this.instagramService.postImageToInstagram(
-  //       url,
-  //       caption
-  //     )
-  //     return result
-  //   }
-  //   const result = await this.instagramService.uploadToInstagram(url, caption)
-  //   return result
-  // }
+      command
+        .on('end', () => {
+          try {
+            const files = fs
+              .readdirSync(outputDir)
+              .filter((f) => f.startsWith('frame_'))
+              .sort();
 
-  // private async twitterPublish(url: string, caption: string, type: "image" | "video") {
-  //   const result = await this.twitterService.postPhoto(url, caption)
-  //   return result
-  // }
+            for (let i = 0; i < Math.min(frameCount, files.length); i++) {
+              const framePath = path.join(outputDir, files[i]);
+              const imageBuffer = fs.readFileSync(framePath);
+              const base64 = imageBuffer.toString('base64');
+              frames.push(base64);
+              fs.unlinkSync(framePath);
+            }
 
-  // private async youtubePublish(url: string, caption: string) {
-  //   const result = await this.youtubeService.uploadShort(
-  //     url,
-  //     caption,
-  //     ""
-  //   )
-  //   return result
-  // }
+            resolve(frames);
+          } catch (err) {
+            reject(err);
+          }
+        })
+        .on('error', (err) => reject(err))
+        .output(outputPattern)
+        .outputOptions([
+          `-vf select='not(mod(n\\,${Math.floor(100 / frameCount)}))',scale=512:512:force_original_aspect_ratio=decrease`,
+          '-vsync vfr',
+          '-frames:v ' + frameCount,
+        ])
+        .run();
+    });
+  }
 }

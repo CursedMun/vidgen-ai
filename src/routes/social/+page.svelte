@@ -33,7 +33,7 @@
 
       isAddingAccount = true;
       try {
-        await trpc.videos.addInstagramAccount.mutate({ 
+        await trpc.accounts.addInstagramAccount.mutate({ 
           shortLivedToken: newToken, 
           name: accountAlias 
         });
@@ -51,8 +51,8 @@
     }
   
     async function loadAccounts() {
-      accounts = await trpc.videos.listInstagramAccounts.query();
-      accountsYoutube = await trpc.videos.listYoutubeAccounts.query();
+      accounts = await trpc.accounts.listInstagramAccounts.query();
+      accountsYoutube = await trpc.accounts.listYoutubeAccounts.query();
     }
   
     onMount(() => {

@@ -227,6 +227,14 @@ export class WorkflowJobService {
         return this.handleFail('Failed to download video', workflowRun, wj);
       }
 
+      const frames = await this.videoService.extractFramesAsBase64(
+        videoPath,
+        10,
+      );
+      if (!frames || frames.length === 0) {
+        console.log('No frames extracted from video');
+      }
+
       const videoDescription = await this.videoService.describeVideo(videoPath);
       if (!videoDescription) {
         return this.handleFail('Failed to describe video', workflowRun, wj);
@@ -236,6 +244,15 @@ export class WorkflowJobService {
           url: videoData.videoUrl,
           description: videoDescription,
           sourceId: wj.workflow.sourceId,
+          assets: {
+            createMany: {
+              data: frames.map((frame) => ({
+                type: 'image',
+                url: frame,
+                metadata: Prisma.JsonNull,
+              })),
+            },
+          },
         },
       });
       await this.db.workflowJob.update({
@@ -316,12 +333,31 @@ export class WorkflowJobService {
       if (!idea) {
         return this.handleFail('Idea not found', workflowRun, wj);
       }
+      const prompt = `
+    ${extendedWorkflow.preset.videoPrompt?.content}
+
+    Reference video style and characteristics:
+    ${idea.description}
+    ${
+      imageReferences.length > 0
+        ? `
+If face reference images are provided, replace the original subject’s face with the face from the reference images. Use the remaining reference images to guide the overall visual style, mood, lighting, framing, and aesthetic of the video. Maintain natural facial expressions, realistic skin tones, and seamless face integration throughout the motion.`
+        : ''
+    }
+    
+    ${
+      extendedWorkflow.preset.audioPrompt?.content ??
+      `
+    Audio:
+    """Copy from reference video"""
+    `
+    }
+    `;
+
       const media = await this.videoService.generateVideo(
-        extendedWorkflow.preset.videoPrompt?.content,
+        prompt,
         extendedWorkflow.model,
-        extendedWorkflow.preset.audioPrompt?.content!,
         imageReferences,
-        idea.description,
       );
       await this.db.video.create({
         data: {

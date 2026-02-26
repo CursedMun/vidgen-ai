@@ -37,15 +37,16 @@
   let presets = $state([] as Awaited<ReturnType<typeof trpc.presets.list.query>>);
   let sources = $state([] as Awaited<ReturnType<typeof trpc.sources.list.query>>);
   let workflows = $state([] as Awaited<ReturnType<typeof trpc.workflows.list.query>>);
-  let allAccounts = $state([] as Awaited<ReturnType<typeof trpc.videos.listInstagramAccounts.query>>);
+  let allAccounts = $state([] as Awaited<ReturnType<typeof trpc.accounts.listInstagramAccounts.query>>);
   let open = $state(false);
   let isDeleteDialogOpen = $state(false);
   let workflowToDelete = $state<number | null>(null);
+  let editingWorkflow = $state<number | null>(null);
   let searchQuery = $state('');
   let isCreating = $state(false);
   let isDeleting = $state(false);
   let isRunning = $state(false);
-  let selectedAccounts = $state([] as Awaited<ReturnType<typeof trpc.videos.listInstagramAccounts.query>>);
+  let selectedAccounts = $state([] as Awaited<ReturnType<typeof trpc.accounts.listInstagramAccounts.query>>);
   const selectedLabels = $derived(
     selectedAccounts.map((a) => a.name).join(", ") || "Select accounts...",
   );
@@ -104,10 +105,11 @@
   let presetId = $state("");
   let title = $state("");
   let description = $state("");
+  let jobsPerInterval = $state(0);
   
   const load = async () => {
-    const instaAcconts = await trpc.videos.listInstagramAccounts.query();
-    const youtubeAcconts = await trpc.videos.listYoutubeAccounts.query();
+    const instaAcconts = await trpc.accounts.listInstagramAccounts.query();
+    const youtubeAcconts = await trpc.accounts.listYoutubeAccounts.query();
     allAccounts = [...instaAcconts, ...youtubeAcconts];
     presets = await trpc.presets.list.query();
     sources = await trpc.sources.list.query();
@@ -156,34 +158,68 @@
     
     isCreating = true;
     try {
-      await trpc.workflows.create.mutate({
-        title,
-        description: description || undefined,
-        interval,
-        type,
-        model,
-        sourceId: Number(sourceId),
-        presetId: presetId ? Number(presetId) : undefined,
-        accountIds: selectedAccounts.map(a => a.id),
-      });
+      if (editingWorkflow) {
+        await trpc.workflows.update.mutate({
+          id: editingWorkflow,
+          title,
+          description: description || undefined,
+          interval,
+          jobsPerInterval,
+          type,
+          model,
+          sourceId: Number(sourceId),
+          presetId: presetId ? Number(presetId) : null,
+          accountIds: selectedAccounts.map(a => a.id),
+        });
+        toast.success('Workflow updated successfully!');
+      } else {
+        await trpc.workflows.create.mutate({
+          title,
+          description: description || undefined,
+          interval,
+          jobsPerInterval,
+          type,
+          model,
+          sourceId: Number(sourceId),
+          presetId: presetId ? Number(presetId) : undefined,
+          accountIds: selectedAccounts.map(a => a.id),
+        });
+        toast.success('Workflow created successfully!');
+      }
   
-      toast.success('Workflow created successfully!');
       open = false;
       
       // Clear form
+      editingWorkflow = null;
       title = '';
       description = '';
       presetId = '';
       sourceId = '';
+      jobsPerInterval = 0;
       selectedAccounts = [];
       
       await load();
     } catch (e) {
       console.error(e);
-      toast.error('Failed to create workflow');
+      toast.error(editingWorkflow ? 'Failed to update workflow' : 'Failed to create workflow');
     } finally {
       isCreating = false;
     }
+  }
+
+  function openEditDialog(workflow: typeof workflows[0]) {
+    editingWorkflow = workflow.id;
+    title = workflow.title;
+    description = workflow.description || '';
+    interval = workflow.interval;
+    jobsPerInterval = workflow.jobsPerInterval;
+    type = workflow.type;
+    model = workflow.model;
+    sourceId = workflow.sourceId.toString();
+    presetId = workflow.presetId?.toString() || '';
+    selectedAccounts = workflow.accounts || [];
+    activeTabIdx = workflowTypeTabs.findIndex(tab => tab.value === workflow.type);
+    open = true;
   }
 
   function openDeleteDialog(id: number) {
@@ -238,10 +274,12 @@
         onclick={() => {
           open = true;
           // Clear form
+          editingWorkflow = null;
           title = '';
           description = '';
           presetId = '';
           sourceId = '';
+          jobsPerInterval = 0;
           selectedAccounts = [];
         }}
       >
@@ -254,7 +292,7 @@
     <Dialog.Root bind:open>
         <Dialog.Content class="max-w-4xl max-h-[90vh] overflow-y-auto">
           <Dialog.Header>
-            <Dialog.Title>Create New Workflow</Dialog.Title>
+            <Dialog.Title>{editingWorkflow ? 'Edit Workflow' : 'Create New Workflow'}</Dialog.Title>
             <Dialog.Description>Configure your workflow settings</Dialog.Description>
           </Dialog.Header>
           <div class="space-y-4 py-4">
@@ -267,7 +305,7 @@
                     <button
                       type="button"
                       class="group relative z-[1] flex-1 min-w-[100px] rounded-md px-3 py-2 {activeTabIdx === i ? 'z-0' : ''}"
-                      on:click={() => {
+                      onclick={() => {
                         activeTabIdx = i;
                         type = tab.value;
                       }}
@@ -337,20 +375,33 @@
               </Select>
             </div>
 
-            <div class="space-y-2">
-              <Label>Interval</Label>
-              <Select type="single" bind:value={interval}>
-                <SelectTrigger class="w-full">{triggerInterval}</SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1m">Every minute</SelectItem>
-                  <SelectItem value="10m">Every 10 minutes</SelectItem>
-                  <SelectItem value="1h">Every hour</SelectItem>
-                  <SelectItem value="6h">Every 6 hours</SelectItem>
-                  <SelectItem value="12h">Every 12 hours</SelectItem>
-                  <SelectItem value="1d">Daily</SelectItem>
-                  <SelectItem value="1w">Weekly</SelectItem>
-                </SelectContent>
-              </Select>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <Label>Interval</Label>
+                <Select type="single" bind:value={interval}>
+                  <SelectTrigger class="w-full">{triggerInterval}</SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1m">Every minute</SelectItem>
+                    <SelectItem value="10m">Every 10 minutes</SelectItem>
+                    <SelectItem value="1h">Every hour</SelectItem>
+                    <SelectItem value="6h">Every 6 hours</SelectItem>
+                    <SelectItem value="12h">Every 12 hours</SelectItem>
+                    <SelectItem value="1d">Daily</SelectItem>
+                    <SelectItem value="1w">Weekly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div class="space-y-2">
+                <Label>Jobs Per Interval</Label>
+                <Input 
+                  type="number" 
+                  bind:value={jobsPerInterval} 
+                  placeholder="0 = unlimited" 
+                  min="0"
+                  class="w-full" 
+                />
+              </div>
             </div>
 
             {#if type === 'video_generation'}
@@ -470,7 +521,7 @@
                 ((type === 'video_generation' || type === 'video_publish_with_sound') && !presetId) ||
                 ((type === 'video_publish_with_sound' || type === 'video_publish') && selectedAccounts.length === 0)}
             >
-              {isCreating ? 'Creating...' : 'Create Workflow'}
+              {isCreating ? (editingWorkflow ? 'Updating...' : 'Creating...') : (editingWorkflow ? 'Update Workflow' : 'Create Workflow')}
             </Button>
           </Dialog.Footer>
         </Dialog.Content>
@@ -504,9 +555,9 @@
                       <Badge class={cn("capitalize font-normal text-xs", getStatusColor(workflow.status ?? "pending"))}>
                         {#if workflow.status === 'processing'}
                           <Loader2 size={12} class="mr-1 animate-spin" />
-                        {:else if workflow.status === 'completed'}
+                        {:else if workflow.status === 'active'}
                           <Check size={12} class="mr-1" />
-                        {:else if workflow.status === 'failed'}
+                        {:else if workflow.status === 'deactivated'}
                           <X size={12} class="mr-1" />
                         {/if}
                         {workflow.status || 'pending'}
@@ -552,9 +603,9 @@
 
                   <div class="p-3 border-t flex gap-2">
                     <Button 
-                      href="/workflows/{workflow.id}" 
                       variant="outline" 
                       size="sm" 
+                      onclick={() => openEditDialog(workflow)}
                       class="flex-1 h-8"
                     >
                       <Pencil size={12} class="mr-1" />
