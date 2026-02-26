@@ -117,4 +117,15 @@ export const accountRouter = router({
       const response = await ctx.services.instagram.getInsights(input.id);
       return response;
     }),
+
+  accountMedias: publicProcedure
+    .input(
+      z.object({
+        id: z.number(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const response = await ctx.services.instagram.getMedias(input.id);
+      return response;
+    }),
 });

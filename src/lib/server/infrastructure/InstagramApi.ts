@@ -63,8 +63,37 @@ export class InstagramApi {
     const response = await this.api
       .url(`/${instagramBusinessId}/insights`)
       .query({
-        metric: "reach,accounts_engaged,profile_views",
+        metric: "profile_views,total_interactions,views,likes,comments,shares,saves,reposts,profile_links_taps",
         metric_type: "total_value",
+        period: "day",
+        access_token: token,
+      })
+      .get()
+      .json<any>();
+
+
+    return { data: response.data };
+  }
+
+  public async getMediasByAccount(instagramBusinessId: string, token: string) {
+    const response = await this.api
+      .url(`/${instagramBusinessId}/media`)
+      .query({
+        fields: "id,media_type,media_url",
+        access_token: token,
+      })
+      .get()
+      .json<any>();
+
+
+    return { data: response.data };
+  }
+
+  public async getMediaInsights(mediaId: string, token: string) {
+    const response = await this.api
+      .url(`/${mediaId}/insights`)
+      .query({
+        metric: "comments,likes,reach,total_interactions,views",
         period: "day",
         access_token: token,
       })
