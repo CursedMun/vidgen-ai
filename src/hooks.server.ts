@@ -12,6 +12,7 @@ async function initializeWorkflow() {
     workflowInitialized = true;
     const app = await configureApp({} as RequestEvent);
     await app.services.workflow.init();
+    await app.services.workflowJobs.init();
     console.log('🔄 Workflow service initialized');
   }
 }

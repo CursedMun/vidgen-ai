@@ -177,6 +177,9 @@ export class WorkflowService {
             gte: new Date(new Date().setHours(0, 0, 0, 0)),
             lt: new Date(new Date().setHours(24, 0, 0, 0)),
           },
+          workflow: {
+            type: wf.type,
+          },
         },
       });
       if (workflowLimitPerDay && countJobsToday >= workflowLimitPerDay.count) {
@@ -253,6 +256,9 @@ export class WorkflowService {
           createdAt: {
             gte: new Date(new Date().setHours(0, 0, 0, 0)),
             lt: new Date(new Date().setHours(24, 0, 0, 0)),
+          },
+          workflow: {
+            type: wf.type,
           },
         },
       });

@@ -15,6 +15,7 @@ import { TwitterService } from './social_media/TwitterService';
 import { YoutubeService } from './social_media/YoutubeService';
 import { TranscriberService } from './TranscriberService';
 import { VideoService } from './VideoService';
+import { WorkflowJobService } from './WorkflowJobService';
 import { WorkflowService } from './WorkflowService';
 
 export function configureServices(
@@ -44,8 +45,17 @@ export function configureServices(
     instagramService,
     rssService,
   );
+  const workflowJobs = new WorkflowJobService(
+    db,
+    transcriberService,
+    videoService,
+    youtubeService,
+    instagramService,
+    rssService,
+  );
   return {
     workflow,
+    workflowJobs,
     transcriber: transcriberService,
     youtube: youtubeService,
     video: videoService,

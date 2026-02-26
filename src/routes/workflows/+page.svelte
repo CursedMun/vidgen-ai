@@ -29,6 +29,7 @@
     Youtube
   } from "lucide-svelte";
   import { onMount } from 'svelte';
+  import { AnimateSharedLayout, Motion } from "svelte-motion";
   import { toast } from 'svelte-sonner';
   
   const trpc = createTrpcClient();
@@ -86,10 +87,19 @@
         return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
     }
   };
-  
+  const workflowTypeTabs = [
+    { value: 'video_ideas_fetching', title: 'Ideas' },
+    { value: 'video_generation', title: 'Generate' },
+    { value: 'video_publish_with_sound', title: 'Publish+Sound' },
+    { value: 'video_publish', title: 'Publish' },
+    { value: 'image_generation', title: 'Image Gen' },
+    { value: 'image_publish', title: 'Image Pub' }
+  ];
+
   let interval = $state("6h");
-  let mediaType = $state("video" as "video" | "image");
-  let model = $state("veo" as "veo" | "chatgpt");
+  let type = $state("video_generation" as "video_ideas_fetching" | "video_generation" | "video_publish_with_sound" | "video_publish" | "image_generation" | "image_publish");
+  let activeTabIdx = $state(1); // Default to video_generation
+  let model = $state("chatgpt" as "veo" | "chatgpt");
   let sourceId = $state("");
   let presetId = $state("");
   let title = $state("");
@@ -127,12 +137,20 @@
   );
   
   async function addAutomation() {
-    if (!presetId) {
+    if (!title) {
+      toast.error('Please enter a title');
+      return;
+    }
+    if (!sourceId) {
+      toast.error('Please select a content source');
+      return;
+    }
+    if ((type === 'video_generation' || type === 'video_publish_with_sound') && !presetId) {
       toast.error('Please select a preset');
       return;
     }
-    if (!title) {
-      toast.error('Please enter a title');
+    if ((type === 'video_publish_with_sound' || type === 'video_publish') && selectedAccounts.length === 0) {
+      toast.error('Please select at least one target account');
       return;
     }
     
@@ -142,10 +160,10 @@
         title,
         description: description || undefined,
         interval,
-        mediaType,
+        type,
         model,
-        sourceId: sourceId ? Number(sourceId) : undefined,
-        presetId: Number(presetId),
+        sourceId: Number(sourceId),
+        presetId: presetId ? Number(presetId) : undefined,
         accountIds: selectedAccounts.map(a => a.id),
       });
   
@@ -242,6 +260,44 @@
           <div class="space-y-4 py-4">
             
             <div class="space-y-2">
+              <Label>Workflow Type</Label>
+              <div class="relative flex flex-wrap items-center gap-1 p-1 bg-muted rounded-lg">
+                <AnimateSharedLayout>
+                  {#each workflowTypeTabs as tab, i}
+                    <button
+                      type="button"
+                      class="group relative z-[1] flex-1 min-w-[100px] rounded-md px-3 py-2 {activeTabIdx === i ? 'z-0' : ''}"
+                      on:click={() => {
+                        activeTabIdx = i;
+                        type = tab.value;
+                      }}
+                    >
+                      {#if activeTabIdx === i}
+                        <Motion
+                          layoutId="workflow-tab"
+                          transition={{ duration: 0.2, type: 'spring', stiffness: 300, damping: 30 }}
+                          let:motion
+                        >
+                          <div
+                            use:motion
+                            class="absolute inset-0 rounded-md bg-background shadow-sm"
+                          ></div>
+                        </Motion>
+                      {/if}
+                      <span
+                        class="relative text-sm block font-medium duration-200 {activeTabIdx === i
+                          ? 'text-foreground delay-100'
+                          : 'text-muted-foreground'}"
+                      >
+                        {tab.title}
+                      </span>
+                    </button>
+                  {/each}
+                </AnimateSharedLayout>
+              </div>
+            </div>
+
+            <div class="space-y-2">
               <Label>Title</Label>
               <Input bind:value={title} placeholder="My automation name" class="w-full" />
             </div>
@@ -250,8 +306,54 @@
               <Label>Description (Optional)</Label>
               <Input bind:value={description} placeholder="Brief description..." class="w-full" />
             </div>
+            
+            <div class="space-y-2">
+              <Label>Content Source</Label>
+              <Select type="single" name="sources" bind:value={sourceId}>
+                <SelectTrigger class="w-full">
+                  {#if sourceId}
+                    {@const source = sources.find(s => s.id.toString() === sourceId)}
+                    {source ? `${source.name} (${source.type})` : 'Select source...'}
+                  {:else}
+                    Select source...
+                  {/if}
+                </SelectTrigger>
+                <SelectContent>
+                  {#if sources.length > 0}
+                    {#each sources as source}
+                      <SelectItem value={source.id.toString()}>
+                        <div class="flex items-center justify-between w-full">
+                          <span class="truncate">{source.name}</span>
+                          <span class="text-xs text-muted-foreground ml-2 uppercase">{source.type}</span>
+                        </div>
+                      </SelectItem>
+                    {/each}
+                  {:else}
+                    <div class="p-4 text-center text-sm text-muted-foreground">
+                      No sources available. Create one first.
+                    </div>
+                  {/if}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <Label>Interval</Label>
+              <Select type="single" bind:value={interval}>
+                <SelectTrigger class="w-full">{triggerInterval}</SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1m">Every minute</SelectItem>
+                  <SelectItem value="10m">Every 10 minutes</SelectItem>
+                  <SelectItem value="1h">Every hour</SelectItem>
+                  <SelectItem value="6h">Every 6 hours</SelectItem>
+                  <SelectItem value="12h">Every 12 hours</SelectItem>
+                  <SelectItem value="1d">Daily</SelectItem>
+                  <SelectItem value="1w">Weekly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {#if type === 'video_generation'}
               <div class="space-y-2">
                 <Label>Preset</Label>
                 <Select type="single" name="presets" bind:value={presetId}>
@@ -265,7 +367,38 @@
                   </SelectContent>
                 </Select>
               </div>
+            {/if}
 
+            {#if type === 'video_publish_with_sound'}
+              <div class="space-y-2">
+                <Label>Preset</Label>
+                <Select type="single" name="presets" bind:value={presetId}>
+                  <SelectTrigger class="w-full">
+                    {presets.find(p => p.id.toString() === presetId)?.name || 'Select preset...'}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {#each presets as p}
+                      <SelectItem value={p.id.toString()}>{p.name}</SelectItem>
+                    {/each}
+                  </SelectContent>
+                </Select>
+              </div>
+            {/if}
+
+            {#if type === 'video_ideas_fetching' || type === 'video_generation'}
+              <div class="space-y-2">
+                <Label>Model</Label>
+                <Select type="single" bind:value={model}>
+                  <SelectTrigger class="w-full uppercase">{model}</SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="chatgpt">ChatGPT</SelectItem>
+                    <SelectItem value="veo">Google Veo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            {/if}
+
+            {#if type === 'video_publish_with_sound' || type === 'video_publish'}
               <div class="space-y-2">
                 <Label>Target Accounts</Label>
                 
@@ -321,77 +454,7 @@
                   </Popover.Content>
                 </Popover.Root>
               </div>
-            </div>
-            
-            <div class="space-y-2">
-              <Label>Content Source (Optional)</Label>
-              <Select type="single" name="sources" bind:value={sourceId}>
-                <SelectTrigger class="w-full">
-                  {#if sourceId}
-                    {@const source = sources.find(s => s.id.toString() === sourceId)}
-                    {source ? `${source.name} (${source.type})` : 'Select source...'}
-                  {:else}
-                    Select source...
-                  {/if}
-                </SelectTrigger>
-                <SelectContent>
-                  {#if sources.length > 0}
-                    {#each sources as source}
-                      <SelectItem value={source.id.toString()}>
-                        <div class="flex items-center justify-between w-full">
-                          <span class="truncate">{source.name}</span>
-                          <span class="text-xs text-muted-foreground ml-2 uppercase">{source.type}</span>
-                        </div>
-                      </SelectItem>
-                    {/each}
-                  {:else}
-                    <div class="p-4 text-center text-sm text-muted-foreground">
-                      No sources available. Create one first.
-                    </div>
-                  {/if}
-                </SelectContent>
-              </Select>
-            </div>
-      
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="space-y-2">
-                <Label>Type</Label>
-                <Select type="single" bind:value={mediaType}>
-                  <SelectTrigger class="w-full capitalize">{mediaType}</SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="video">Video</SelectItem>
-                    <SelectItem value="image">Image</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-      
-              <div class="space-y-2">
-                <Label>Model</Label>
-                <Select type="single" bind:value={model}>
-                  <SelectTrigger class="w-full uppercase">{model}</SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="chatgpt">ChatGPT</SelectItem>
-                    <SelectItem value="veo">Google Veo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div class="space-y-2">
-              <Label>Interval</Label>
-              <Select type="single" bind:value={interval}>
-                <SelectTrigger class="w-full">{triggerInterval}</SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1m">Every minute</SelectItem>
-                  <SelectItem value="10m">Every 10 minutes</SelectItem>
-                  <SelectItem value="1h">Every hour</SelectItem>
-                  <SelectItem value="6h">Every 6 hours</SelectItem>
-                  <SelectItem value="12h">Every 12 hours</SelectItem>
-                  <SelectItem value="1d">Daily</SelectItem>
-                  <SelectItem value="1w">Weekly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/if}
           </div>
           <Dialog.Footer>
             <Button 
@@ -403,7 +466,9 @@
             </Button>
             <Button 
               onclick={addAutomation}
-              disabled={isCreating || !title || !presetId}
+              disabled={isCreating || !title || !sourceId || 
+                ((type === 'video_generation' || type === 'video_publish_with_sound') && !presetId) ||
+                ((type === 'video_publish_with_sound' || type === 'video_publish') && selectedAccounts.length === 0)}
             >
               {isCreating ? 'Creating...' : 'Create Workflow'}
             </Button>
@@ -459,7 +524,9 @@
                       </div>
                       <div class="flex items-center justify-between text-xs">
                         <span class="text-muted-foreground">Type</span>
-                        <span class="font-medium capitalize">{workflow.mediaType || 'video'}</span>
+                        <span class="font-medium text-xs">
+                          {workflow.type ? workflow.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'N/A'}
+                        </span>
                       </div>
                       <div class="flex items-center justify-between text-xs">
                         <span class="text-muted-foreground">Model</span>

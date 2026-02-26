@@ -102,91 +102,99 @@ export class WorkflowJobService {
         startedAt: new Date(),
       },
     });
-    console.log(`🚀 Processing Workflow Job: ${wj.id}`);
-    const jobData = JSON.parse(wj.data as string) as {
-      videoId: number;
-      soundId: number;
-      accountId: number;
-    };
-    const video = await this.db.video.findFirst({
-      where: {
-        id: jobData.videoId,
-      },
-      include: {
-        idea: true,
-      },
-    });
-    if (!video) {
-      return this.handleFail('Video not found', workflowRun, wj);
-    }
-    const asset = await this.db.asset.findFirst({
-      where: {
-        id: jobData.soundId,
-      },
-    });
-    if (!asset) {
-      return this.handleFail('Asset not found', workflowRun, wj);
-    }
-    const account = await this.db.account.findFirst({
-      where: {
-        id: jobData.accountId,
-      },
-    });
-    if (!account) {
-      return this.handleFail('Account not found', workflowRun, wj);
-    }
-    const mergeAudioAndVideoPath = await this.videoService.mergeAudioAndVideo(
-      video.path,
-      asset.url,
-    );
-    const postDescriptionPrompt = `
-      Write me a post about this idea to my video
-      ${video.idea.description}
-      `;
-    const postDescription =
-      await this.videoService.generateSocialMediaDescription(
-        'video',
-        postDescriptionPrompt,
-      );
-    //TODO publish process
-    let externalId: string;
-    // YouTube
-    if (account.platform === 'youtube') {
-      const result = await this.youtubeService.uploadShort(
+    try {
+      console.log(`🚀 Processing Workflow Job: ${wj.id}`);
+      const jobData = JSON.parse(wj.data as string) as {
+        videoId: number;
+        soundId: number;
+        accountId: number;
+      };
+      const video = await this.db.video.findFirst({
+        where: {
+          id: jobData.videoId,
+        },
+        include: {
+          idea: true,
+        },
+      });
+      if (!video) {
+        return this.handleFail('Video not found', workflowRun, wj);
+      }
+      const asset = await this.db.asset.findFirst({
+        where: {
+          id: jobData.soundId,
+        },
+      });
+      if (!asset) {
+        return this.handleFail('Asset not found', workflowRun, wj);
+      }
+      const account = await this.db.account.findFirst({
+        where: {
+          id: jobData.accountId,
+        },
+      });
+      if (!account) {
+        return this.handleFail('Account not found', workflowRun, wj);
+      }
+      const mergeAudioAndVideoPath = await this.videoService.mergeAudioAndVideo(
         video.path,
-        postDescription,
-        postDescription,
-        account,
+        asset.url,
       );
-      externalId = result?.videoId as string;
-    }
-    // Instagram
-    else if (account.platform === 'instagram') {
-      await this.instagramService.setCurrentUser(account.id);
-      externalId = await this.instagramService.uploadToInstagram(
-        video.path,
-        postDescription,
-        'video',
-      );
-    }
-    await this.db.post.create({
-      data: {
-        accountId: account.id,
-        description: postDescription,
-        videoId: video.id,
-      },
-    });
+      const postDescriptionPrompt = `
+        Write me a post about this idea to my video
+        ${video.idea.description}
+        `;
+      const postDescription =
+        await this.videoService.generateSocialMediaDescription(
+          'video',
+          postDescriptionPrompt,
+        );
+      //TODO publish process
+      let externalId: string;
+      // YouTube
+      if (account.platform === 'youtube') {
+        const result = await this.youtubeService.uploadShort(
+          video.path,
+          postDescription,
+          postDescription,
+          account,
+        );
+        externalId = result?.videoId as string;
+      }
+      // Instagram
+      else if (account.platform === 'instagram') {
+        await this.instagramService.setCurrentUser(account.id);
+        externalId = await this.instagramService.uploadToInstagram(
+          video.path,
+          postDescription,
+          'video',
+        );
+      }
+      await this.db.post.create({
+        data: {
+          accountId: account.id,
+          description: postDescription,
+          videoId: video.id,
+        },
+      });
 
-    await this.db.workflowJob.update({
-      where: {
-        id: wj.id,
-      },
-      data: {
-        status: 'completed',
-        completedAt: new Date(),
-        workflowRunId: workflowRun.id,
-      },
-    });
+      await this.db.workflowJob.update({
+        where: {
+          id: wj.id,
+        },
+        data: {
+          status: 'completed',
+          completedAt: new Date(),
+          workflowRunId: workflowRun.id,
+        },
+      });
+    } catch (err) {
+      await this.handleFail(
+        `Error processing workflow job:${JSON.stringify(err)}`,
+        workflowRun,
+        wj,
+      );
+    }
   }
   private async processVideoIdeaFetching(wj: WorkflowJobWithWorkflow) {
     const workflowRun = await this.db.workflowRun.upsert({
@@ -205,39 +213,49 @@ export class WorkflowJobService {
         startedAt: new Date(),
       },
     });
-    console.log(`🚀 Processing Workflow Job: ${wj.id}`);
-    const videoData = JSON.parse(wj.data as string) as {
-      videoId: number;
-      videoUrl: string;
-    };
-    const videoPath = await this.youtubeService.downloadShortById(
-      videoData.videoId.toString(),
-    );
-    if (!videoPath) {
-      return this.handleFail('Failed to download video', workflowRun, wj);
-    }
+    try {
+      console.log(`🚀 Processing Workflow Job: ${wj.id}`);
+      console.log(wj.data);
+      const videoData = wj.data as {
+        videoId: number;
+        videoUrl: string;
+      };
+      const videoPath = await this.youtubeService.downloadShortById(
+        videoData.videoId.toString(),
+      );
+      if (!videoPath) {
+        return this.handleFail('Failed to download video', workflowRun, wj);
+      }
 
-    const videoDescription = await this.videoService.describeVideo(videoPath);
-    if (!videoDescription) {
-      return this.handleFail('Failed to describe video', workflowRun, wj);
+      const videoDescription = await this.videoService.describeVideo(videoPath);
+      if (!videoDescription) {
+        return this.handleFail('Failed to describe video', workflowRun, wj);
+      }
+      await this.db.idea.create({
+        data: {
+          url: videoData.videoUrl,
+          description: videoDescription,
+          sourceId: wj.workflow.sourceId,
+        },
+      });
+      await this.db.workflowJob.update({
+        where: {
+          id: wj.id,
+        },
+        data: {
+          status: 'completed',
+          completedAt: new Date(),
+          workflowRunId: workflowRun.id,
+        },
+      });
+    } catch (error) {
+      console.error(`Error processing workflow job ${wj.id}:`, error);
+      await this.handleFail(
+        `Error processing workflow job:${JSON.stringify(error)}`,
+        workflowRun,
+        wj,
+      );
     }
-    await this.db.idea.create({
-      data: {
-        url: videoData.videoUrl,
-        description: videoDescription,
-        sourceId: wj.workflow.sourceId,
-      },
-    });
-    await this.db.workflowJob.update({
-      where: {
-        id: wj.id,
-      },
-      data: {
-        status: 'completed',
-        completedAt: new Date(),
-        workflowRunId: workflowRun.id,
-      },
-    });
   }
   private async processVideoGeneration(wj: WorkflowJobWithWorkflow) {
     const extendedWorkflow = await this.db.workflow.findFirst({
@@ -275,57 +293,60 @@ export class WorkflowJobService {
     if (!extendedWorkflow) {
       return this.handleFail('Extended workflow not found', workflowRun, wj);
     }
+    try {
+      console.log(`🚀 Processing Workflow Job: ${wj.id}`);
+      const imageReferences =
+        extendedWorkflow.preset?.assets.map((x) => {
+          return {
+            mimeType: 'image/png',
+            //TODO change when move to S3
+            imageBytes: x.url,
+          };
+        }) ?? [];
+      if (!extendedWorkflow.preset?.videoPrompt?.content) {
+        throw new Error('Video prompt not found');
+      }
 
-    console.log(`🚀 Processing Workflow Job: ${wj.id}`);
-    const videoData = JSON.parse(wj.data as string) as {
-      videoId: number;
-      videoUrl: string;
-    };
-    const imageReferences =
-      extendedWorkflow.preset?.assets.map((x) => {
-        return {
-          mimeType: 'image/png',
-          //TODO change when move to S3
-          imageBytes: x.url,
-        };
-      }) ?? [];
-    if (!extendedWorkflow.preset?.videoPrompt?.content) {
-      throw new Error('Video prompt not found');
+      const parsedData = wj.data as {
+        ideaId: number;
+      };
+      const idea = await this.db.idea.findFirst({
+        where: { id: parsedData.ideaId },
+      });
+      if (!idea) {
+        return this.handleFail('Idea not found', workflowRun, wj);
+      }
+      const media = await this.videoService.generateVideo(
+        extendedWorkflow.preset.videoPrompt?.content,
+        extendedWorkflow.model,
+        extendedWorkflow.preset.audioPrompt?.content!,
+        imageReferences,
+        idea.description,
+      );
+      await this.db.video.create({
+        data: {
+          workflowJobId: wj.id,
+          ideaId: idea.id,
+          path: media,
+        },
+      });
+      await this.db.workflowJob.update({
+        where: {
+          id: wj.id,
+        },
+        data: {
+          status: 'completed',
+          completedAt: new Date(),
+          workflowRunId: workflowRun.id,
+        },
+      });
+    } catch (err) {
+      await this.handleFail(
+        `Error generating video: ${JSON.stringify(err)}`,
+        workflowRun,
+        wj,
+      );
     }
-
-    const parsedData = JSON.parse(wj.data as string) as {
-      ideaId: number;
-    };
-    const idea = await this.db.idea.findFirst({
-      where: { id: parsedData.ideaId },
-    });
-    if (!idea) {
-      return this.handleFail('Idea not found', workflowRun, wj);
-    }
-    const media = await this.videoService.generateVideo(
-      extendedWorkflow.preset.videoPrompt?.content,
-      extendedWorkflow.model,
-      extendedWorkflow.preset.audioPrompt?.content!,
-      imageReferences,
-      idea.description,
-    );
-    await this.db.video.create({
-      data: {
-        workflowJobId: wj.id,
-        ideaId: idea.id,
-        path: media,
-      },
-    });
-    await this.db.workflowJob.update({
-      where: {
-        id: wj.id,
-      },
-      data: {
-        status: 'completed',
-        completedAt: new Date(),
-        workflowRunId: workflowRun.id,
-      },
-    });
   }
   private async generateVideo(
     workflow: WorkflowExtended,

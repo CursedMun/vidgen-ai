@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-	import { BarChart3, HelpCircle, Instagram, Layers, Link2, MessageSquare, Search, Settings, Wrench, Zap } from "lucide-svelte";
+	import { BarChart3, HelpCircle, Instagram, Layers, LineChart, Link2, MessageSquare, Search, Settings, Wrench, Zap } from "lucide-svelte";
 	import type { ComponentProps } from "svelte";
 	import NavMain from "./nav-main.svelte";
 
@@ -30,6 +30,11 @@
 				title: "Workflows",
 				url: "/workflows",
 				icon: Zap,
+			},
+			{
+				title: "Workflow Limits",
+				url: "/workflow-limits",
+				icon: LineChart,
 			},
 			{
 				title: "Social",

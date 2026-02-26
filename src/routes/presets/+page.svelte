@@ -101,7 +101,11 @@
         await trpc.presets.create.mutate({ 
           name, 
           description,
-          assets: files.map(f => ({ data: f.data, type: f.type })),
+          assets: files.map(f => ({
+            data: f.data,
+            type: f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : 'audio' as 'image' | 'audio' | 'video',
+            metadata: {},
+          })),
           audioPromptId: selectedAudioPromptId ? parseInt(selectedAudioPromptId) : undefined,
           imagePromptId: selectedImagePromptId ? parseInt(selectedImagePromptId) : undefined,
           videoPromptId: selectedVideoPromptId ? parseInt(selectedVideoPromptId) : undefined,
@@ -179,7 +183,11 @@
           id: selectedPreset.id,
           name,
           description,
-          assets: files.map(f => ({ data: f.data, type: f.type })),
+          assets: files.map(f => ({
+            data: f.data,
+            type: f.type.startsWith('image/') ? 'image' : f.type.startsWith('video/') ? 'video' : 'audio' as 'image' | 'audio' | 'video',
+            metadata: {},
+          })),
           audioPromptId: selectedAudioPromptId ? parseInt(selectedAudioPromptId) : undefined,
           imagePromptId: selectedImagePromptId ? parseInt(selectedImagePromptId) : undefined,
           videoPromptId: selectedVideoPromptId ? parseInt(selectedVideoPromptId) : undefined,

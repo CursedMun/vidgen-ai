@@ -150,7 +150,7 @@ model Idea {
     updatedAt   DateTime @updatedAt @map("updated_at")
     videos      Video[]
 
-    @@map("video_ideas")
+    @@map("ideas")
 }
 
 enum WorkflowType {
@@ -214,6 +214,7 @@ model WorkflowJob {
     data          Json
     status        WorkflowJobStatus @default(pending)
     executedAt    DateTime?         @map("executed_at")
+    completedAt   DateTime?         @map("completed_at")
     createdAt     DateTime          @default(now()) @map("created_at")
     updatedAt     DateTime          @updatedAt @map("updated_at")
     workflowRun   WorkflowRun?

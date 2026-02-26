@@ -6,6 +6,9 @@ export const presetRouter = router({
     return await ctx.db.preset.findMany({
       include: {
         assets: true,
+        videoPrompt: true,
+        audioPrompt: true,
+        imagePrompt: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -21,7 +24,9 @@ export const presetRouter = router({
         include: {
           workflows: true,
           assets: true,
-          prompts: true,
+          videoPrompt: true,
+          audioPrompt: true,
+          imagePrompt: true,
         },
       });
     }),
@@ -56,7 +61,8 @@ export const presetRouter = router({
         assets: z.array(
           z.object({
             data: z.string(),
-            type: z.string(),
+            type: z.enum(['image', 'audio', 'video']),
+            metadata: z.record(z.string(), z.any()).optional(),
           }),
         ),
         audioPromptId: z.int().optional().nullable(),
@@ -72,6 +78,7 @@ export const presetRouter = router({
             data: {
               type: asset.type,
               url: asset.data,
+              metadata: (asset.metadata || {}) as any,
             },
           }),
         ),
@@ -89,6 +96,12 @@ export const presetRouter = router({
               ? { connect: createdAssets.map((a) => ({ id: a.id })) }
               : undefined,
         },
+        include: {
+          assets: true,
+          videoPrompt: true,
+          audioPrompt: true,
+          imagePrompt: true,
+        },
       });
     }),
 
@@ -98,12 +111,15 @@ export const presetRouter = router({
         id: z.number().int().positive(),
         name: z.string().optional(),
         description: z.string().optional().nullable(),
-        assets: z.array(
-          z.object({
-            data: z.string(),
-            type: z.string(),
-          }),
-        ),
+        assets: z
+          .array(
+            z.object({
+              data: z.string(),
+              type: z.enum(['image', 'audio', 'video']),
+              metadata: z.record(z.string(), z.any()).optional(),
+            }),
+          )
+          .optional(),
         audioPromptId: z.int().optional().nullable(),
         imagePromptId: z.int().optional().nullable(),
         videoPromptId: z.int().optional().nullable(),
@@ -121,35 +137,46 @@ export const presetRouter = router({
         },
       });
       if (!prevPreset) return;
-      // Delete existing assets for this preset
-      await ctx.db.asset.deleteMany({
-        where: {
-          id: {
-            in: prevPreset?.assets.map((x) => x.id),
-          },
-        },
-      });
 
-      // Create new assets
-      const createdAssets = await Promise.all(
-        assets.map((asset) =>
-          ctx.db.asset.create({
-            data: {
-              type: asset.type,
-              url: asset.data,
+      // Only update assets if provided
+      let createdAssets: any[] = [];
+      if (assets) {
+        // Delete existing assets for this preset
+        await ctx.db.asset.deleteMany({
+          where: {
+            id: {
+              in: prevPreset?.assets.map((x) => x.id),
             },
-          }),
-        ),
-      );
+          },
+        });
+
+        // Create new assets
+        createdAssets = await Promise.all(
+          assets.map((asset) =>
+            ctx.db.asset.create({
+              data: {
+                type: asset.type,
+                url: asset.data,
+                metadata: (asset.metadata || {}) as any,
+              },
+            }),
+          ),
+        );
+      }
 
       return await ctx.db.preset.update({
         where: { id },
         data: {
           ...data,
-          assets:
-            createdAssets.length > 0
-              ? { connect: createdAssets.map((a) => ({ id: a.id })) }
-              : undefined,
+          ...(assets && createdAssets.length > 0
+            ? { assets: { connect: createdAssets.map((a) => ({ id: a.id })) } }
+            : {}),
+        },
+        include: {
+          assets: true,
+          videoPrompt: true,
+          audioPrompt: true,
+          imagePrompt: true,
         },
       });
     }),
@@ -157,6 +184,22 @@ export const presetRouter = router({
   deletePreset: publicProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
+      // Delete associated assets first
+      const preset = await ctx.db.preset.findUnique({
+        where: { id: input.id },
+        include: { assets: true },
+      });
+
+      if (preset?.assets.length) {
+        await ctx.db.asset.deleteMany({
+          where: {
+            id: {
+              in: preset.assets.map((a) => a.id),
+            },
+          },
+        });
+      }
+
       return await ctx.db.preset.delete({
         where: { id: input.id },
       });

@@ -215,7 +215,7 @@ export class YoutubeService extends BaseSocialMedia {
     return filePath;
   }
   public async downloadShortById(videoId: string): Promise<string | undefined> {
-    console.log(`Fetching latest video for video ID: ${videoId}`);
+    console.log(`Fetching video ID: ${videoId}`);
 
     const downloadsDir = path.join(process.cwd(), 'static/downloads');
     if (!fs.existsSync(downloadsDir)) {
@@ -224,7 +224,6 @@ export class YoutubeService extends BaseSocialMedia {
 
     const fileName = `yt_${videoId}_${Date.now()}.mp4`;
     const filePath = path.join(downloadsDir, fileName);
-    console.log(videoId);
     const stream = await this.yt.download(videoId, {
       type: 'video+audio',
     });

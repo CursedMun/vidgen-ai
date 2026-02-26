@@ -37,6 +37,7 @@
 		"openai": "^6.21.0",
 		"prisma": "^7.4.1",
 		"rss-parser": "^3.13.0",
+		"svelte-motion": "^0.12.2",
 		"tsx": "^4.21.0",
 		"twitter-api-v2": "^1.29.0",
 		"wretch": "^3.0.5",

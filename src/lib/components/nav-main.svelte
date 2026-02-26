@@ -51,7 +51,7 @@
                         </div>
                         
                         <span class={cn(
-                            "text-[10px] font-medium transition-colors",
+                            "text-[10px] font-medium transition-colors text-center",
                             isActive ? "text-sidebar-foreground" : "text-muted-foreground group-hover/item:text-sidebar-foreground"
                         )}>
                             {item.title}

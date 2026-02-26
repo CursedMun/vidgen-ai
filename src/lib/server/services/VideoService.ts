@@ -235,7 +235,6 @@ Be specific and descriptive.`,
         },
       ],
     });
-    console.log({ response });
 
     return response.text;
   }
