@@ -95,7 +95,7 @@
         <div class="flex items-center justify-between px-4 pt-2">
           <div>
             <h2 class="text-3xl font-black tracking-tight text-zinc-900">Canal Analytics</h2>
-            <p class="text-sm font-medium text-zinc-500 uppercase tracking-widest">Performance · Últimos 28 Dias</p>
+            <p class="text-sm font-medium text-zinc-500 uppercase tracking-widest">Performance · Last 28 Days</p>
           </div>
         </div>
       
