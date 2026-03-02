@@ -12,6 +12,21 @@ import {
 
 const supabaseUrl = 'https://knepxsusnvopbojcrjpn.supabase.co';
 const supabase = createClient(supabaseUrl, SUPABASE_KEY);
+
+type MediaInsights = {
+  id: string,
+  media_type: 'IMAGE' | 'VIDEO',
+  media_url: string,
+  insight: {
+    name: 'comments' | 'likes' | 'reach' |  'total_interactions',
+    period: string,
+    values: { value: number }[],
+    title: string,
+    description: string,
+    id: string
+  }[]
+}[]
+
 export class InstagramService extends BaseSocialMedia {
   constructor(
     private db: TDatabase,
@@ -43,21 +58,12 @@ export class InstagramService extends BaseSocialMedia {
     }
   }
 
-  public async getInsights(id: number) {
-    const account = await this.db.account.findFirst({
-      where: {
-        id: id,
-      },
-    });
-    if (!account) throw new Error(`Account ID ${id} not found.`);
-
-    if (account.platform !== "instagram") return []
-    const data = JSON.parse(account.jsonData);
-
+  public async getInsights(jsonData: string) {
+    const data = JSON.parse(jsonData);
     return (await this.instagramApi.getAccountInsights(data.instagramBusinessId, data.accessToken)).data
   }
 
-  public async getMedias(id: number) {
+  public async getMedias(id: number): Promise<MediaInsights> {
     const account = await this.db.account.findFirst({
       where: {
         id: id,

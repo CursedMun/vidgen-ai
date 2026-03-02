@@ -12,6 +12,18 @@ import {
   type UploadResult,
 } from './BaseSocialMedia';
 
+interface YTAnalyticsColumnHeader {
+  name: string;
+  columnType: 'DIMENSION' | 'METRIC';
+  dataType: 'STRING' | 'INTEGER' | 'FLOAT';
+}
+type YTAnalyticsRow = [string, number, number, number, number];
+interface YTAnalyticsResponse {
+  kind: 'youtubeAnalytics#resultTable';
+  columnHeaders: YTAnalyticsColumnHeader[];
+  rows: YTAnalyticsRow[];
+}
+
 export class YoutubeService extends BaseSocialMedia {
   constructor(
     private db: TDatabase,
@@ -24,6 +36,120 @@ export class YoutubeService extends BaseSocialMedia {
 
   public getPlatform(): string {
     return 'youtube';
+  }
+
+  public async getAllVideos(channelId: string) {
+   const youtube = google.youtube({
+      version: 'v3',
+      auth: this.ytOauth2Client
+    });
+    const response = await youtube.search.list({
+      part: ['snippet'],
+      channelId: channelId,
+      maxResults: 50,
+      order: 'date',
+      type: ['video']
+    });
+
+    return response.data.items?.map(v => ({
+      id: v.id?.videoId,
+      title: v.snippet?.title,
+      thumbnail: v.snippet?.thumbnails?.high?.url,
+      publishedAt: v.snippet?.publishedAt
+    }));
+  }
+
+
+  private processYoutubeStats = (data: YTAnalyticsResponse) => {
+    const { rows } = data;
+
+    // 28 days
+    const totals = rows.reduce((acc: any, row: any) => ({
+      views: acc.views + row[1],
+      watchTime: acc.watchTime + row[2],
+      avgDuration: acc.avgDuration + row[3],
+      subs: acc.subs + row[4]
+    }), { views: 0, watchTime: 0, avgDuration: 0, subs: 0 });
+
+    const chartData = rows.map((row: any) => ({
+      date: row[0],
+      views: row[1]
+    }));
+
+    return { totals, chartData };
+  };
+
+  public async getInsights(jsonData: string) {
+    const data = JSON.parse(jsonData);
+    this.ytOauth2Client.setCredentials({ access_token: data.accessToken, refresh_token: data.refreshToken });
+
+
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    try {
+      const youtubeAnalytics = google.youtubeAnalytics({
+        version: "v2",
+        auth: this.ytOauth2Client
+      });
+
+      const response = await youtubeAnalytics.reports.query({
+        ids: 'channel==MINE',
+        startDate: startDate,
+        endDate: endDate,
+        metrics: 'views,estimatedMinutesWatched,averageViewDuration,subscribersGained',
+        dimensions: 'day',
+        sort: 'day'
+      });
+
+      return this.processYoutubeStats(response.data as YTAnalyticsResponse);
+    } catch (error) {
+      console.error("Erro ao buscar YouTube Analytics:", error);
+      throw error;
+    }
+  }
+
+  public async getVideosWithStats() {
+    const youtube = google.youtube({
+      version: 'v3',
+      auth: this.ytOauth2Client
+    });
+
+    const channelRes = await youtube.channels.list({
+      part: ['contentDetails'],
+      mine: true
+    });
+
+    const uploadsId = channelRes?.data?.items[0]?.contentDetails?.relatedPlaylists?.uploads;
+
+    const playlistRes = await youtube.playlistItems.list({
+      part: ['snippet', 'contentDetails'],
+      playlistId: uploadsId,
+      maxResults: 10
+    });
+
+    const videoIds = playlistRes.data.items.map(item => item.contentDetails.videoId).join(',');
+
+    // (views, likes, comments)
+    const statsRes = await youtube.videos.list({
+      part: ['statistics', 'contentDetails'],
+      id: videoIds
+    });
+
+    return playlistRes.data.items.map((item, index) => {
+      const stats = statsRes.data.items[index].statistics;
+      const duration = statsRes.data.items[index].contentDetails.duration;
+
+      return {
+        id: item.contentDetails.videoId,
+        title: item.snippet.title,
+        thumbnail: item.snippet.thumbnails.high.url,
+        views: parseInt(stats.viewCount),
+        likes: parseInt(stats.likeCount),
+        comments: parseInt(stats.commentCount),
+        // If the duration is short
+        isShort: duration.includes('S') && !duration.includes('M')
+      };
+    });
   }
 
   public async upload(options: UploadOptions): Promise<UploadResult> {
@@ -57,6 +183,7 @@ export class YoutubeService extends BaseSocialMedia {
         'https://www.googleapis.com/auth/youtube.readonly',
         'openid',
         'https://www.googleapis.com/auth/userinfo.email',
+        "https://www.googleapis.com/auth/yt-analytics.readonly"
       ],
       prompt: 'consent',
     });

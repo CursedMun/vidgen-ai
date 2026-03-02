@@ -140,18 +140,34 @@ export const accountRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const response = await ctx.services.instagram.getInsights(input.id);
-      return response;
+      const account = await ctx.db.account.findFirst({
+        where: {
+          id: input.id,
+        },
+      });
+      if (!account) throw new Error(`Account ID ${input.id} not found.`);
+
+      if (account.platform === "instagram") {
+        const response = await ctx.services.instagram.getInsights(account.jsonData);
+        return  {platform: account.platform, data: response};
+      }
+      const response = await ctx.services.youtube.getInsights(account.jsonData);
+      return {platform: account.platform, data: response};
     }),
 
-  accountMedias: publicProcedure
+  mediasInsights: publicProcedure
     .input(
       z.object({
         id: z.number(),
+        platform: z.enum(['instagram', 'youtube']).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const response = await ctx.services.instagram.getMedias(input.id);
+      if (input.platform === "instagram") {
+        const response = await ctx.services.instagram.getMedias(input.id);
+        return response;
+      }
+      const response = await ctx.services.youtube.getVideosWithStats();
       return response;
     }),
 });

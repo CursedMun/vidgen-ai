@@ -193,9 +193,10 @@
         {#if accountsYoutube.length > 0}
           <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
             {#each accountsYoutube as account}
-              <div class="group cursor-pointer">
-                <div class="relative rounded-lg overflow-hidden border transition-all hover:border-primary">
-                  <div class="p-4">
+            <div class="group cursor-pointer">
+              <div class="relative rounded-lg overflow-hidden border transition-all hover:border-primary">
+                <div class="p-4">
+                    <Button href="/social/{account.id}" variant="link">
                     <div class="flex items-center gap-3">
                       <div class="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20">
                         <IconBrandYoutube size={20} />
@@ -204,6 +205,7 @@
                         <p class="font-semibold text-sm truncate">{account.name}</p>
                       </div>
                     </div>
+                  </Button>
                   </div>
                 </div>
               </div>

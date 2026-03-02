@@ -63,7 +63,7 @@ export class InstagramApi {
     const response = await this.api
       .url(`/${instagramBusinessId}/insights`)
       .query({
-        metric: "profile_views,total_interactions,views,likes,comments,shares,saves,reposts,profile_links_taps",
+        metric: "profile_views,total_interactions,views,likes,comments,shares,saves,reposts,profile_links_taps, accounts_engaged",
         metric_type: "total_value",
         period: "day",
         access_token: token,
@@ -106,8 +106,6 @@ export class InstagramApi {
 
   public async uploadReel(videoUrl: string, caption: string) {
     try {
-      console.log('🚀 Iniciando upload de Reel...');
-
       const containerRes = await this.api
         .url(`/${ this.userSelected.accoundId}/media`)
         .query({
@@ -134,7 +132,7 @@ export class InstagramApi {
         .post()
         .json<any>();
 
-      console.log('✅ Reels publicado! ID:', publishRes.id);
+      console.log('✅ ID:', publishRes.id);
       return publishRes.id;
     } catch (error: any) {
       const errorData = error.response ? await error.response.json() : error;
@@ -156,7 +154,7 @@ export class InstagramApi {
         .json<any>();
 
       const creationId = containerRes.id;
-      console.log(`Container de imagem criado. ID: ${creationId}`);
+      console.log(`Container created. ID: ${creationId}`);
       await this.waitForMediaProcessing(creationId);
 
       const publishRes = await this.api
